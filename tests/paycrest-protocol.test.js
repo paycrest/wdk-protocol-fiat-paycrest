@@ -320,7 +320,7 @@ describe('PaycrestProtocol', () => {
     })
 
     test('should never send credentials or fee settings to the callback', async () => {
-      await paycrest.buy({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', fiatAmount: 100n, recipient: WALLET_ADDRESS, config: { ...buyConfig, senderFee: '9' } })
+      await paycrest.buy({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', fiatAmount: 100n, recipient: WALLET_ADDRESS, config: { ...buyConfig, senderFee: 'client-fee' } })
 
       const serialized = JSON.stringify(checkoutUrl.mock.calls[0][0])
       expect(serialized).not.toMatch(/apiKey|API-Key|senderFee/)

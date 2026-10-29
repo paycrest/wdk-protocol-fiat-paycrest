@@ -104,7 +104,7 @@ describe('buildOrderPayload', () => {
     const request = offrampRequest()
     request.order.reference = 'ref-1'
     request.order.rate = '1490.5'
-    request.order.senderFeePercent = '50'
+    request.order.senderFeePercent = 'client-fee'
     request.order.senderFeeAddress = '0xattacker'
     request.order.unexpected = true
 
@@ -112,9 +112,9 @@ describe('buildOrderPayload', () => {
   })
 
   test('should take fee settings only from the server defaults', () => {
-    const payload = buildOrderPayload(onrampRequest(), { senderFeePercent: '1', senderFeeAddress: '0xfee', transactionFeePayer: 'customer' })
+    const payload = buildOrderPayload(onrampRequest(), { senderFeePercent: 'server-fee', senderFeeAddress: '0xfee', transactionFeePayer: 'customer' })
 
-    expect(payload.senderFeePercent).toBe('1')
+    expect(payload.senderFeePercent).toBe('server-fee')
     expect(payload.senderFeeAddress).toBe('0xfee')
     expect(payload.transactionFeePayer).toBe('customer')
   })
@@ -256,10 +256,10 @@ describe('createPaycrestHandler', () => {
 
   test('should create an order and return the checkout URL', async () => {
     const onOrderCreated = jest.fn()
-    await listen({ ...options, onOrderCreated, orderDefaults: { senderFeePercent: '1' } })
+    await listen({ ...options, onOrderCreated, orderDefaults: { senderFeePercent: 'server-fee' } })
 
     const request = offrampRequest()
-    request.order.senderFee = '999'
+    request.order.senderFee = 'client-fee'
 
     const resp = await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(request) })
     const body = await resp.json()
@@ -271,13 +271,13 @@ describe('createPaycrestHandler', () => {
 
     const sent = JSON.parse(paycrestFetch.mock.calls[0][1].body)
     expect(sent.senderFee).toBeUndefined()
-    expect(sent.senderFeePercent).toBe('1')
+    expect(sent.senderFeePercent).toBe('server-fee')
     expect(paycrestFetch.mock.calls[0][1].headers['API-Key']).toBe(API_KEY)
     expect(onOrderCreated).toHaveBeenCalledWith(expect.objectContaining({ id: ORDER_ID }), expect.anything(), request)
   })
 
   test('should use a custom checkoutUrl and per-request order defaults', async () => {
-    const orderDefaults = jest.fn().mockResolvedValue({ senderFeePercent: '2' })
+    const orderDefaults = jest.fn().mockResolvedValue({ senderFeePercent: 'per-request-fee' })
     await listen({ ...options, checkoutUrl: (order) => `https://app.example.com/pay/${order.id}`, orderDefaults })
 
     const resp = await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(onrampRequest()) })
