@@ -1,0 +1,89 @@
+{
+  "name": "@paycrest/wdk-protocol-fiat-paycrest",
+  "version": "1.0.0-beta.1",
+  "description": "Paycrest fiat on-ramp and off-ramp module for @tetherto/wdk-wallet accounts, built on the Paycrest Sender API",
+  "keywords": [
+    "wdk",
+    "protocol",
+    "fiat",
+    "paycrest",
+    "on-ramp",
+    "off-ramp",
+    "stablecoin"
+  ],
+  "homepage": "https://github.com/paycrest/wdk-protocol-fiat-paycrest#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paycrest/wdk-protocol-fiat-paycrest.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paycrest/wdk-protocol-fiat-paycrest/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Paycrest",
+  "type": "module",
+  "main": "index.js",
+  "types": "./types",
+  "files": [
+    "index.js",
+    "bare.js",
+    "server.js",
+    "src",
+    "types"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build:types": "tsc",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "smoke": "node scripts/smoke-test.mjs"
+  },
+  "dependencies": {
+    "@tetherto/wdk-wallet": "^1.0.0-beta.15",
+    "bare-node-runtime": "^1.1.4",
+    "bignumber.js": "^9.3.1"
+  },
+  "devDependencies": {
+    "cross-env": "7.0.3",
+    "jest": "30.1.3",
+    "standard": "17.1.2",
+    "typescript": "5.8.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./types/index.d.ts",
+      "bare": "./bare.js",
+      "default": "./index.js"
+    },
+    "./server": {
+      "types": "./types/server.d.ts",
+      "default": "./server.js"
+    },
+    "./package": {
+      "default": "./package.json"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ]
+  },
+  "standard": {
+    "ignore": [
+      "bare.js",
+      "types/**"
+    ],
+    "env": [
+      "jest"
+    ]
+  }
+}
