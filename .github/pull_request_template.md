@@ -1,0 +1,37 @@
+### Description
+
+<!--
+Describe the purpose of this PR along with any background information and the impacts of the proposed change.
+For the benefit of the community, please do not assume prior context.
+
+Provide details that support your chosen implementation, including: breaking changes, alternatives considered,
+changes to the public API, etc.
+-->
+
+
+### References
+
+<!--
+Include any links supporting this change, such as related issues or PRs (e.g. closes #12).
+If there are no references, simply delete this section.
+-->
+
+
+### Testing
+
+<!--
+Describe how this can be tested by reviewers. Be specific about anything not tested and reasons why.
+Include any manual steps and details of the environment this PR was developed in (Node.js version, OS).
+-->
+
+- [ ] This change adds test coverage for new/changed/fixed functionality
+
+
+### Checklist
+
+- [ ] I have added documentation and tests for new/changed functionality in this PR
+- [ ] All active GitHub checks for tests, formatting, and security are passing
+- [ ] The correct base branch is being used, if not `main`
+
+
+By submitting a PR, I agree to Paycrest's [Contributor Code of Conduct](https://paycrest.notion.site/Contributor-Code-of-Conduct-1602482d45a2806bab75fd314b381f4c) and [Contribution Guide](https://paycrest.notion.site/Contribution-Guide-1602482d45a2809a8930e6ad565c906a).
