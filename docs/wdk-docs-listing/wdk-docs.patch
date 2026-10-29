@@ -1,0 +1,1029 @@
+From f378398aac19191b03be9549051de92bda1fae09 Mon Sep 17 00:00:00 2001
+From: chibie <chibuotu@gmail.com>
+Date: Thu, 29 Oct 2026 12:18:09 +0000
+Subject: [PATCH] Add: Paycrest Fiat Module Docs
+
+---
+ .../fiat-paycrest/api-reference.mdx           | 312 ++++++++++++++++++
+ .../fiat-paycrest/configuration.mdx           | 162 +++++++++
+ .../fiat-paycrest/guides/buy-and-sell.mdx     | 144 ++++++++
+ .../fiat-paycrest/guides/get-started.mdx      |  63 ++++
+ .../guides/manage-transactions.mdx            |  71 ++++
+ .../sdk/fiat-modules/fiat-paycrest/index.mdx  |  81 +++++
+ .../sdk/fiat-modules/fiat-paycrest/usage.mdx  |  37 +++
+ content/docs/sdk/fiat-modules/index.mdx       |   1 +
+ content/feeds/all-modules.md                  |   2 +
+ public/llms-full.txt                          |   2 +
+ public/llms.txt                               |   7 +
+ src/lib/custom-tree.ts                        |  10 +
+ 12 files changed, 892 insertions(+)
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx
+ create mode 100644 content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx
+
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx
+new file mode 100644
+index 0000000..837032c
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx
+@@ -0,0 +1,312 @@
++---
++title: Fiat Paycrest API Reference
++description: API Reference for the @paycrest/wdk-protocol-fiat-paycrest module
++docType: reference
++schemaType: APIReference
++icon: Code
++---
++
++# API Reference
++
++Complete API documentation for the `@paycrest/wdk-protocol-fiat-paycrest` module.
++
++## Constructor
++
++### `new PaycrestProtocol(account, config)`
++
++Creates a new PaycrestProtocol instance. It calls only Paycrest's public endpoints and holds no credentials, so it can run in your wallet app.
++
++**Parameters:**
++
++| Name | Type | Description |
++|------|------|-------------|
++| `account` | `IWalletAccount` \| `IWalletAccountReadOnly` \| `undefined` | Optional account. Its address is the default `recipient` for `buy()` and the default `refundAddress` for `sell()`. The module never signs with it. |
++| `config` | `PaycrestProtocolConfig` | Configuration object |
++
++**Config Options:**
++
++| Name | Type | Required | Default | Description |
++|------|------|----------|---------|-------------|
++| `checkoutUrl` | function | For `buy`/`sell` | - | Callback `(request: PaycrestCheckoutRequest) => Promise<PaycrestCheckoutResult>` that creates the order through your backend and returns a checkout URL. `buy`/`sell` throw without it. |
++| `getOrder` | function | For `getTransactionDetail` | - | Callback `(orderId) => Promise<PaycrestOrder>` that fetches the order through your backend. `getTransactionDetail` throws without it. |
++| `network` | string | No | - | Default Paycrest network used when a call omits `config.network` |
++| `baseUrl` | string | No | `https://api.paycrest.io` | Paycrest API origin |
++| `cacheTime` | number | No | `600000` | Cache duration for supported tokens and currencies (ms) |
++| `fetch` | function | No | global `fetch` | Custom fetch implementation |
++
++The constructor throws a `ValueError` if `config` contains `apiKey` or `apiSecret`.
++
++**Example:**
++
++```typescript
++import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
++
++const paycrest = new PaycrestProtocol(account, { network: 'base', checkoutUrl, getOrder });
++```
++
++See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for the backend routes behind `checkoutUrl` and `getOrder`.
++
++---
++
++## Methods
++
++### `buy(options)`
++
++Assembles an on-ramp order (fiat in, stablecoin out) and returns the checkout URL from your `checkoutUrl` callback.
++
++**Parameters:**
++
++| Name | Type | Required | Description |
++|------|------|----------|-------------|
++| `options.cryptoAsset` | string | Yes | Stablecoin code (e.g. `'USDT'`) |
++| `options.fiatCurrency` | string | Yes | Fiat currency code (e.g. `'NGN'`) |
++| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
++| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
++| `options.recipient` | string | No | Wallet address that receives the stablecoin (falls back to the account address) |
++| `options.config` | `PaycrestBuyParams` | Yes | Customer `kyc`, `refundAccount`, and optional order parameters |
++
++*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
++
++**Returns:** `Promise<{ buyUrl: string, orderId?: string, metadata?: PaycrestOrder }>`
++
++`orderId` and `metadata` are present when your callback returns the object form `{ url, orderId, order }`.
++
++---
++
++### `sell(options)`
++
++Assembles an off-ramp order (stablecoin in, fiat out) and returns the checkout URL from your `checkoutUrl` callback.
++
++**Parameters:**
++
++| Name | Type | Required | Description |
++|------|------|----------|-------------|
++| `options.cryptoAsset` | string | Yes | Stablecoin code (e.g. `'USDT'`) |
++| `options.fiatCurrency` | string | Yes | Fiat currency code (e.g. `'KES'`) |
++| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
++| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
++| `options.refundAddress` | string | No | Address for refunds if the order cannot be fulfilled (falls back to the account address) |
++| `options.config` | `PaycrestSellParams` | Yes | Payout `recipient` and optional order parameters |
++
++*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
++
++**Returns:** `Promise<{ sellUrl: string, orderId?: string, metadata?: PaycrestOrder }>`
++
++---
++
++### `quoteBuy(options)`
++
++Gets an on-ramp quote from `GET /v2/rates/{network}/{token}/{amount}/{fiat}?side=buy`.
++
++**Parameters:**
++
++| Name | Type | Required | Description |
++|------|------|----------|-------------|
++| `options.cryptoAsset` | string | Yes | Stablecoin code |
++| `options.fiatCurrency` | string | Yes | Fiat currency code |
++| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
++| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
++| `options.config` | `PaycrestQuoteParams` | No | `network` and `providerId` |
++
++*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
++
++**Returns:** `Promise<PaycrestQuote>`
++
++```typescript
++const quote = await paycrest.quoteBuy({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', fiatAmount: 5_000_000n });
++// { cryptoAmount: 33327778n, fiatAmount: 5000000n, fee: 0n, rate: '1500.25', metadata: { side: 'buy', network: 'base', providerIds: [...] } }
++```
++
++---
++
++### `quoteSell(options)`
++
++Gets an off-ramp quote from `GET /v2/rates/{network}/{token}/{amount}/{fiat}?side=sell`. Takes the same parameters as `quoteBuy`.
++
++**Returns:** `Promise<PaycrestQuote>`
++
++---
++
++### `getSupportedCryptoAssets()`
++
++Lists stablecoins from `GET /v2/tokens`, one entry per token and network.
++
++**Returns:** `Promise<PaycrestSupportedCryptoAsset[]>`
++
++```typescript
++// [{ code: 'USDT', networkCode: 'base', decimals: 6, name: 'USDT', metadata: { contractAddress: '0x...', ... } }, ...]
++```
++
++---
++
++### `getSupportedFiatCurrencies()`
++
++Lists fiat currencies from `GET /v2/currencies`, with the decimals Paycrest reports.
++
++**Returns:** `Promise<PaycrestSupportedFiatCurrency[]>`
++
++---
++
++### `getSupportedCountries()`
++
++Derives countries from the supported fiat currencies. `isBuyAllowed` and `isSellAllowed` are `true` for every listed corridor; quotes confirm live availability.
++
++**Returns:** `Promise<PaycrestSupportedCountry[]>`
++
++---
++
++### `getTransactionDetail(txId)`
++
++Fetches an order through your `getOrder` callback and normalises its status.
++
++**Parameters:**
++
++| Name | Type | Required | Description |
++|------|------|----------|-------------|
++| `txId` | string | Yes | The Paycrest order id |
++
++**Returns:** `Promise<PaycrestTransactionDetail>`
++
++```typescript
++// { status: 'completed', cryptoAsset: 'USDT', fiatCurrency: 'NGN', metadata: PaycrestOrder }
++```
++
++---
++
++## Types
++
++### `PaycrestCheckoutRequest`
++
++What `buy()` and `sell()` pass to your `checkoutUrl` callback. `order` is the `POST /v2/sender/orders` body, without credentials or sender fee settings.
++
++```typescript
++interface PaycrestCheckoutRequest {
++  direction: 'onramp' | 'offramp';
++  order: {
++    amount: string; // major units of the amountIn side
++    amountIn: 'crypto' | 'fiat';
++    source: object; // { type: 'fiat', ... } for on-ramp, { type: 'crypto', ... } for off-ramp
++    destination: object; // { type: 'crypto', ... } for on-ramp, { type: 'fiat', ... } for off-ramp
++    reference?: string;
++    rate?: string;
++  };
++}
++
++type PaycrestCheckoutResult = string | { url: string; orderId?: string; order?: PaycrestOrder };
++```
++
++### `PaycrestBuyParams`
++
++```typescript
++interface PaycrestBuyParams {
++  kyc: PaycrestKyc; // required: the customer paying in fiat
++  refundAccount: PaycrestFiatAccount; // required: the customer's own account
++  network?: string;
++  country?: string; // ISO 3166-1 alpha-2
++  recipientKyc?: PaycrestKyc;
++  reference?: string;
++  rate?: string; // lock a quoted rate
++  providerIds?: string[]; // only the first is sent on on-ramp
++}
++```
++
++### `PaycrestSellParams`
++
++```typescript
++interface PaycrestSellParams {
++  recipient: PaycrestFiatAccount & {
++    memo?: string; // defaults to `reference`, then 'Payment'
++    metadata?: { channel?: 'Mobile' | 'Till' | 'Paybill'; businessNumber?: string }; // KES M-Pesa
++  };
++  network?: string;
++  country?: string;
++  kyc?: PaycrestKyc; // the customer sending the stablecoin
++  recipientKyc?: PaycrestKyc;
++  reference?: string;
++  rate?: string;
++  providerIds?: string[]; // up to 3, from quoteSell
++}
++```
++
++### `PaycrestFiatAccount`
++
++```typescript
++interface PaycrestFiatAccount {
++  institution: string; // from GET /v2/institutions/{currency}, e.g. 'GTBINGLA', 'SAFAKEPC'
++  accountIdentifier: string;
++  accountName: string;
++}
++```
++
++### `PaycrestKyc`
++
++The Paycrest `KYCDetail` shape. See [On-ramp customer KYC](https://docs.paycrest.io/implementation-guides/sender-api-integration#on-ramp-customer-kyc) for the per-currency rules.
++
++```typescript
++interface PaycrestKyc {
++  entityType: 'person' | 'organization';
++  personDetails?: { fullName: string; birthDate: string; idDocument: { type: string; number: string; issuerCountry: string }; contact?: { phoneE164?: string } };
++  organizationDetails?: object;
++  principalAddress?: object;
++}
++```
++
++### `PaycrestQuoteParams`
++
++```typescript
++interface PaycrestQuoteParams {
++  network?: string;
++  providerId?: string; // 8 letters, limits the quote to one provider
++}
++```
++
++### `PaycrestQuote`
++
++```typescript
++interface PaycrestQuote {
++  cryptoAmount: bigint;
++  fiatAmount: bigint;
++  fee: bigint; // always 0n: public rates already reflect the provider's price
++  rate: string; // fiat per 1 stablecoin
++  metadata: {
++    side: 'buy' | 'sell';
++    network: string;
++    rate: string;
++    providerIds: string[]; // ranked, best first
++    orderType?: string;
++    refundTimeoutMinutes?: number;
++  };
++}
++```
++
++### `PaycrestOrder`
++
++The order returned by your `getOrder` callback (Paycrest's `GET /v2/sender/orders/{id}`), exposed as `metadata` on `PaycrestTransactionDetail`:
++
++```typescript
++interface PaycrestOrder {
++  id: string;
++  status: 'initiated' | 'deposited' | 'pending' | 'fulfilling' | 'fulfilled' | 'validated' | 'settling' | 'settled' | 'cancelled' | 'refunding' | 'refunded' | 'expired';
++  direction?: 'onramp' | 'offramp';
++  amount?: string;
++  rate?: string;
++  reference?: string;
++  txHash?: string;
++  paymentReference?: string | null; // off-ramp payout receipt
++  providerAccount?: object; // receive address (off-ramp) or virtual account (on-ramp)
++  source: { type: 'crypto' | 'fiat'; currency: string };
++  destination: { type: 'crypto' | 'fiat'; currency: string };
++}
++```
++
++### `PaycrestApiError`
++
++Thrown when a Paycrest request fails.
++
++```typescript
++class PaycrestApiError extends Error {
++  status?: number; // HTTP status, e.g. 404 when no provider is available
++  data?: unknown; // Paycrest error details
++  retryAfter?: number; // seconds, on rate limiting
++}
++```
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx
+new file mode 100644
+index 0000000..31880d7
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx
+@@ -0,0 +1,162 @@
++---
++title: Fiat Paycrest Configuration
++description: Configuration options for the @paycrest/wdk-protocol-fiat-paycrest module
++docType: reference
++schemaType: TechArticle
++icon: Settings
++---
++
++# Configuration
++
++This page covers the module configuration and the backend routes its callbacks call.
++
++## Prerequisites
++
++Before using this module, you need:
++
++1. A Paycrest sender account - [Create an account on the Paycrest Dashboard](https://app.paycrest.io/)
++2. Your sender **API key**, sent as the `API-Key` header on authenticated Sender API requests
++3. Your sender **API secret**, used only to verify webhook signatures
++4. A backend that creates and reads orders on behalf of your users
++
++<Callout type="warn">
++Keep the API key and API secret on your backend. `PaycrestProtocol` never needs them: it calls only Paycrest's public rates, tokens, and currencies endpoints, and it refuses `apiKey` or `apiSecret` in its configuration. Never ship either value in a wallet app, browser bundle, or mobile binary.
++</Callout>
++
++## Installation
++
++```bash
++npm install @paycrest/wdk-protocol-fiat-paycrest
++```
++
++## Basic Configuration
++
++```typescript
++import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
++
++const backend = 'https://your-backend.example.com/paycrest';
++
++const paycrest = new PaycrestProtocol(account, {
++  network: 'base',
++  checkoutUrl: async (request) => {
++    const res = await fetch(`${backend}/orders`, {
++      method: 'POST',
++      headers: { 'content-type': 'application/json', authorization: `Bearer ${sessionToken}` },
++      body: JSON.stringify(request),
++    });
++    if (!res.ok) throw new Error(`Paycrest checkout failed: ${res.status}`);
++    return res.json(); // { url, orderId, order }
++  },
++  getOrder: async (orderId) => {
++    const res = await fetch(`${backend}/orders/${encodeURIComponent(orderId)}`, {
++      headers: { authorization: `Bearer ${sessionToken}` },
++    });
++    if (!res.ok) throw new Error(`Paycrest order lookup failed: ${res.status}`);
++    return res.json();
++  },
++});
++```
++
++## Configuration Options
++
++| Option | Type | Required | Default | Description |
++|--------|------|----------|---------|-------------|
++| `checkoutUrl` | function | For `buy`/`sell` | - | Callback `(request) => Promise<string \| { url, orderId?, order? }>`. Receives `{ direction, order }`, where `order` is the `POST /v2/sender/orders` payload. Your backend creates the order and returns a checkout URL. `buy`/`sell` throw without it. |
++| `getOrder` | function | For `getTransactionDetail` | - | Callback `(orderId) => Promise<PaycrestOrder>` that fetches the order through your backend. `getTransactionDetail` throws without it. |
++| `network` | string | No | - | Default Paycrest network, such as `base`, `ethereum`, `arbitrum-one`, `polygon`, `bnb-smart-chain`, `celo`, `starknet`, `tron`, or `solana`. Required when a token exists on several networks and a call omits `config.network`. |
++| `baseUrl` | string | No | `https://api.paycrest.io` | Paycrest API origin |
++| `cacheTime` | number | No | `600000` (10 min) | Duration in milliseconds to cache supported tokens and currencies |
++| `fetch` | function | No | global `fetch` | Custom fetch implementation |
++
++## Constructor Overloads
++
++```typescript
++// With WDK core, the registered account is passed for you.
++const paycrest = account.getFiatProtocol('paycrest');
++
++// Standalone, bound to an account: its address is the default buy recipient and sell refund address.
++const paycrest = new PaycrestProtocol(account, config);
++
++// Standalone, unbound: pass `recipient` to buy() and `refundAddress` to sell().
++const paycrest = new PaycrestProtocol(undefined, config);
++```
++
++`PaycrestProtocol` only reads the account's address. It never signs with it.
++
++## Implementing the backend routes
++
++Your backend needs three routes. You can write them with any framework or mount the optional helper exported from `@paycrest/wdk-protocol-fiat-paycrest/server`.
++
++| Route | Backs | Does |
++|-------|-------|------|
++| `POST /orders` | `checkoutUrl` | Validates the request, adds your server-side order settings, calls `POST /v2/sender/orders`, and returns `{ url, orderId, order }` |
++| `GET /orders/:id` | `getOrder` | Checks the order belongs to the user, then calls `GET /v2/sender/orders/:id` |
++| `POST /webhooks` | your records | Verifies the `X-Paycrest-Signature` header with your API secret |
++
++### Using the server helper (backend)
++
++```typescript
++import { createServer } from 'node:http';
++import { createPaycrestHandler } from '@paycrest/wdk-protocol-fiat-paycrest/server';
++
++const paycrest = createPaycrestHandler({
++  apiKey: process.env.PAYCREST_API_KEY,
++  apiSecret: process.env.PAYCREST_API_SECRET,
++  publicBaseUrl: 'https://your-backend.example.com/paycrest',
++  authorize: async (req, { action, orderId }) => {
++    // Your session or token check. Return true to allow.
++    return isAllowed(req, action, orderId);
++  },
++  onOrderCreated: async (order, req) => {
++    await saveOrderForUser(order.id, req);
++  },
++  onWebhook: async ({ event, data, wdkStatus }) => {
++    await updateOrder(data.id, event, wdkStatus);
++  },
++});
++
++createServer((req, res) => {
++  if (!req.url.startsWith('/paycrest/')) return res.writeHead(404).end();
++  req.url = req.url.slice('/paycrest'.length);
++  paycrest(req, res);
++}).listen(3000);
++```
++
++The handler serves `POST /orders`, `GET /orders/:id`, `POST /webhooks` (when `apiSecret` is set), and `GET /checkout/:id`, a self-contained page that shows the order's funding instructions and status. By default the returned checkout URL is `${publicBaseUrl}/checkout/{orderId}`. Pass `checkoutUrl: (order) => ...` to send users to a page in your own app instead.
++
++With Express, mount it as middleware. Webhook verification needs the raw body, so mount the handler before any JSON body parser or give it `express.raw()`:
++
++```typescript
++app.use('/paycrest', express.raw({ type: 'application/json' }), paycrest);
++```
++
++### Writing the routes yourself (backend)
++
++```typescript
++import { PaycrestSenderClient, buildOrderPayload, verifyWebhookSignature } from '@paycrest/wdk-protocol-fiat-paycrest/server';
++
++const client = new PaycrestSenderClient({ apiKey: process.env.PAYCREST_API_KEY });
++
++// POST /orders: buildOrderPayload validates the request and drops client-sent fee fields.
++const order = await client.createOrder(buildOrderPayload(req.body));
++res.json({ url: `https://your-app.example.com/pay/${order.id}`, orderId: order.id, order });
++
++// GET /orders/:id
++res.json(await client.getOrder(req.params.id));
++
++// POST /webhooks, using the raw request body
++if (!verifyWebhookSignature(rawBody, req.headers['x-paycrest-signature'], process.env.PAYCREST_API_SECRET)) {
++  return res.status(401).end();
++}
++```
++
++Authorize every route against your own user and order records, rate-limit `POST /orders`, and restrict it to your own origins. Sender fee settings, if you charge one, belong on the backend: pass them through the helper's `orderDefaults` option rather than from the client.
++
++## Environment
++
++Paycrest runs on mainnet only, and there is no sandbox environment. Test with the minimum order size and small amounts until you have verified your integration end to end.
++
++## Next Steps
++
++- [Usage Guide](/sdk/fiat-modules/fiat-paycrest/usage) - Learn how to integrate Paycrest
++- [API Reference](/sdk/fiat-modules/fiat-paycrest/api-reference) - Complete API documentation
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx
+new file mode 100644
+index 0000000..645f5f2
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx
+@@ -0,0 +1,144 @@
++---
++title: Buy and Sell
++description: On-ramp, off-ramp, quotes, supported assets, multi-network assets, and funding an off-ramp from the wallet.
++docType: how-to
++schemaType: TechArticle
++---
++
++This guide explains [buying stablecoins (on-ramp)](#buy-stablecoins-on-ramp), [selling stablecoins (off-ramp)](#sell-stablecoins-off-ramp), [quotes](#get-price-quotes), [supported currencies](#supported-currencies-and-countries), [multi-network assets](#multi-network-assets), and [funding an off-ramp from the wallet](#fund-an-off-ramp-from-the-wallet). It assumes a [`PaycrestProtocol`](/sdk/fiat-modules/fiat-paycrest/api-reference) instance named `paycrest` from [Get Started](/sdk/fiat-modules/fiat-paycrest/guides/get-started).
++
++<Callout type="info">
++Amounts use base units: fiat in minor units, using the 2 decimals Paycrest reports for NGN, KES, UGX, and TZS (so `5_000_000n` is 50,000.00), and stablecoins in on-chain base units (6 decimals for USD₮ on most networks, 18 on BNB Smart Chain). `cryptoAsset` and `fiatCurrency` are matched case-insensitively against [supported currencies](#supported-currencies-and-countries).
++</Callout>
++
++## Buy stablecoins (on-ramp)
++
++Paycrest identifies the paying customer on every on-ramp order, so [`buy()`](/sdk/fiat-modules/fiat-paycrest/api-reference) requires `config.kyc` and a `config.refundAccount` in the customer's own name:
++
++```typescript title="Buy USDt with NGN"
++const { buyUrl, orderId } = await paycrest.buy({
++  cryptoAsset: 'USDT',
++  fiatCurrency: 'NGN',
++  fiatAmount: 5_000_000n, // 50,000.00 NGN in kobo
++  config: {
++    kyc: {
++      entityType: 'person',
++      personDetails: {
++        fullName: 'Ada Lovelace',
++        birthDate: '1990-04-12',
++        idDocument: { type: 'BVN', number: '00000000000', issuerCountry: 'NG' }
++      }
++    },
++    refundAccount: { institution: 'GTBINGLA', accountIdentifier: '0123456789', accountName: 'Ada Lovelace' }
++  }
++})
++```
++
++Open `buyUrl` for the user. It shows the virtual account to pay into, the exact amount, and the deadline. The stablecoin is delivered to `recipient` or, by default, the account's address. KYC rules vary by currency, for example a BVN or NIN for NGN and a Kenyan phone number in `contact.phoneE164` for KES. See Paycrest's [on-ramp customer KYC](https://docs.paycrest.io/implementation-guides/sender-api-integration#on-ramp-customer-kyc) rules.
++
++<Callout type="warn">
++The customer must pay from their own account. Paycrest returns deposits from anyone else to the account they came from.
++</Callout>
++
++## Sell stablecoins (off-ramp)
++
++[`sell()`](/sdk/fiat-modules/fiat-paycrest/api-reference) needs the fiat payout account in `config.recipient`. Look up institution codes with Paycrest's [`GET /v2/institutions/{currency}`](https://docs.paycrest.io/api-reference/general/list-supported-institutions):
++
++```typescript title="Sell USDt for NGN"
++const { sellUrl, orderId, metadata: order } = await paycrest.sell({
++  cryptoAsset: 'USDT',
++  fiatCurrency: 'NGN',
++  cryptoAmount: 100_000_000n, // 100 USDt, 6 decimals
++  config: {
++    recipient: {
++      institution: 'GTBINGLA',
++      accountIdentifier: '0123456789',
++      accountName: 'Ada Lovelace',
++      memo: 'Rent'
++    },
++    reference: 'your-order-id'
++  }
++})
++```
++
++For Kenyan M-Pesa, use institution `SAFAKEPC` and set `recipient.metadata.channel` to `Mobile`, `Till`, or `Paybill`:
++
++```typescript title="Sell USDt to an M-Pesa Till"
++await paycrest.sell({
++  cryptoAsset: 'USDT',
++  fiatCurrency: 'KES',
++  cryptoAmount: 20_000_000n,
++  config: {
++    recipient: {
++      institution: 'SAFAKEPC',
++      accountIdentifier: '123456',
++      accountName: 'Shop Name',
++      metadata: { channel: 'Till' }
++    }
++  }
++})
++```
++
++The refund address defaults to the account's address; pass `refundAddress` to override it.
++
++## Get price quotes
++
++You can preview a purchase with [`quoteBuy()`](/sdk/fiat-modules/fiat-paycrest/api-reference) and a sale with [`quoteSell()`](/sdk/fiat-modules/fiat-paycrest/api-reference). Both accept either `cryptoAmount` or `fiatAmount`:
++
++```typescript title="Quotes"
++const buyQuote = await paycrest.quoteBuy({ cryptoAsset: 'USDT', fiatCurrency: 'KES', fiatAmount: 5_000_000n })
++console.log('USDt received:', buyQuote.cryptoAmount)
++
++const sellQuote = await paycrest.quoteSell({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', cryptoAmount: 100_000_000n })
++console.log('NGN received:', sellQuote.fiatAmount, 'at', sellQuote.rate)
++```
++
++`rate` is fiat per one stablecoin. `fee` is `0n` because Paycrest's public rate already reflects the provider's price. To route the order to the quote the user saw, pass `config.rate: quote.rate` and `config.providerIds: quote.metadata.providerIds` to `buy()` or `sell()`.
++
++If no provider can serve the token, network, direction, and amount, the quote throws a `PaycrestApiError` with `status` `404`.
++
++## Supported currencies and countries
++
++```typescript title="Supported lists"
++const cryptoAssets = await paycrest.getSupportedCryptoAssets()
++const fiatCurrencies = await paycrest.getSupportedFiatCurrencies()
++const countries = await paycrest.getSupportedCountries()
++```
++
++Each crypto asset is one token on one network, with its contract address under `metadata.contractAddress`. Countries are derived from the supported fiat currencies, because Paycrest has no countries endpoint. Their `isBuyAllowed` and `isSellAllowed` flags are `true` for every listed corridor; confirm live availability with a quote.
++
++## Multi-network assets
++
++USD₮ exists on several networks. Pass `config.network`, or set `network` when constructing the protocol. Without either, a token listed on more than one network throws a `ValueError`:
++
++```typescript title="Sell USDt on Tron"
++const result = await paycrest.sell({
++  cryptoAsset: 'USDT',
++  fiatCurrency: 'UGX',
++  cryptoAmount: 50_000_000n,
++  config: { network: 'tron', recipient: payoutAccount }
++})
++```
++
++If the token is not listed on the requested network, the call throws a `NoSuchElementError`.
++
++## Fund an off-ramp from the wallet
++
++The user already holds the stablecoin in their WDK wallet, so you can fund an off-ramp order directly instead of showing `sellUrl`. Send exactly `amountToTransfer` to `receiveAddress` before `validUntil`:
++
++```typescript title="Fund the order with account.transfer"
++const { amountToTransfer, receiveAddress } = order.providerAccount
++
++const [whole, fraction = ''] = amountToTransfer.split('.')
++const amount = BigInt(whole + fraction.padEnd(6, '0').slice(0, 6)) // 6 decimals for USDt on Base
++
++await account.transfer({ token: usdtOnBase.metadata.contractAddress, recipient: receiveAddress, amount })
++```
++
++When `providerAccount.memo` is present, the deposit must include it.
++
++## Next Steps
++
++- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)
++- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
++- [API reference](/sdk/fiat-modules/fiat-paycrest/api-reference)
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx
+new file mode 100644
+index 0000000..fc816ef
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx
+@@ -0,0 +1,63 @@
++---
++title: Get Started
++description: Install the package, set up your backend routes, and register PaycrestProtocol with WDK.
++docType: getting-started
++schemaType: TechArticle
++---
++
++This guide covers [installation](#installation), [backend setup](#set-up-your-backend), and [registering the protocol](#register-paycrestprotocol). You need [Node.js](https://nodejs.org/), [npm](https://www.npmjs.com/), and a Paycrest sender account from the [Paycrest Dashboard](https://app.paycrest.io/).
++
++## Installation
++
++Run the following to install [@paycrest/wdk-protocol-fiat-paycrest](https://www.npmjs.com/package/@paycrest/wdk-protocol-fiat-paycrest):
++
++```bash title="Install with npm"
++npm install @paycrest/wdk-protocol-fiat-paycrest
++```
++
++## Set up your backend
++
++Your backend creates and reads orders with your Paycrest API key. The quickest path is the optional server helper:
++
++```typescript title="Backend routes"
++import { createPaycrestHandler } from '@paycrest/wdk-protocol-fiat-paycrest/server'
++
++const paycrest = createPaycrestHandler({
++  apiKey: process.env.PAYCREST_API_KEY,
++  apiSecret: process.env.PAYCREST_API_SECRET,
++  publicBaseUrl: 'https://your-backend.example.com/paycrest',
++  authorize: async (req, context) => isAllowed(req, context)
++})
++```
++
++See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for mounting it, the routes it serves, and how to write them yourself.
++
++## Register PaycrestProtocol
++
++Register the module with [`registerProtocol`](/sdk/core-module/guides/protocol-integration) and pass callbacks that call your backend:
++
++```typescript title="Register with WDK core"
++import WDK from '@tetherto/wdk'
++import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
++import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest'
++
++const wdk = new WDK(seedPhrase)
++  .registerWallet('base', WalletManagerEvm, { provider: 'https://mainnet.base.org' })
++  .registerProtocol('base', 'paycrest', PaycrestProtocol, {
++    network: 'base',
++    checkoutUrl, // POST your backend's /orders route
++    getOrder // GET your backend's /orders/:id route
++  })
++
++const account = await wdk.getAccount('base', 0)
++const paycrest = account.getFiatProtocol('paycrest')
++```
++
++<Callout type="warn">
++The module holds no Paycrest credentials and refuses `apiKey` or `apiSecret` in its configuration. Keep both on your backend.
++</Callout>
++
++## Next Steps
++
++- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
++- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx
+new file mode 100644
+index 0000000..b095727
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx
+@@ -0,0 +1,71 @@
++---
++title: Manage Transactions
++description: Fetch Paycrest order status and inspect returned details.
++docType: how-to
++schemaType: TechArticle
++---
++
++This guide assumes the `paycrest` instance from [Get Started](/sdk/fiat-modules/fiat-paycrest/guides/get-started). It shows how to [check transaction status](#check-transaction-status), [read transaction details](#read-transaction-details), and [receive webhooks](#receive-webhooks) with [`getTransactionDetail()`](/sdk/fiat-modules/fiat-paycrest/api-reference). Pass the `orderId` returned by `buy()` or `sell()`. The same id works for both directions.
++
++<Callout type="info">
++`getTransactionDetail` delegates the authenticated lookup to your `getOrder` callback. It throws `A 'getOrder' callback is required to fetch a Paycrest order` if one wasn't configured. See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for the backend route.
++</Callout>
++
++<Callout type="warn">
++Treat any order id received from a client as untrusted. Before calling Paycrest or returning order data, verify on your backend that it belongs to the authenticated user.
++</Callout>
++
++## Check transaction status
++
++```typescript title="Transaction status"
++const tx = await paycrest.getTransactionDetail(orderId)
++
++console.log('Status:', tx.status)
++```
++
++`status` is one of `completed`, `failed`, or `in_progress`, normalised from Paycrest's order status and direction:
++
++| WDK status | Off-ramp Paycrest status | On-ramp Paycrest status |
++|------------|--------------------------|-------------------------|
++| `completed` | `validated`, `settling`, `settled` | `settled` |
++| `failed` | `refunding`, `refunded`, `expired`, `cancelled` | `refunding`, `refunded`, `expired`, `cancelled` |
++| `in_progress` | `initiated`, `deposited`, `pending`, `fulfilling`, `fulfilled`, and any unrecognised status | `initiated`, `pending`, `fulfilling`, `validated`, `settling`, and any unrecognised status |
++
++An off-ramp is complete at `validated`, when the provider confirms the fiat payout. An on-ramp is complete at `settled`, when the stablecoin is confirmed on-chain at the recipient's address. An on-ramp held for compliance review stays `pending`, so it reads `in_progress` until it settles or is refunded. Do not ask the user to pay again while it is held.
++
++## Read transaction details
++
++```typescript title="Transaction fields"
++const tx = await paycrest.getTransactionDetail(orderId)
++
++console.log('Crypto asset:', tx.cryptoAsset) // e.g. 'USDT'
++console.log('Fiat currency:', tx.fiatCurrency) // e.g. 'NGN'
++console.log('Direction:', tx.metadata.direction) // 'onramp' or 'offramp'
++console.log('Paycrest status:', tx.metadata.status)
++```
++
++<Callout type="warn">
++The order under `metadata` can contain account and transaction details. Minimize retention and do not write the raw object to application logs or analytics.
++</Callout>
++
++The raw order under `metadata` includes fields such as `providerAccount` (funding instructions), `amount`, `rate`, `reference`, `txHash`, and, on off-ramp orders, `paymentReference` (the payout receipt from the bank or mobile money network). See [`PaycrestOrder`](/sdk/fiat-modules/fiat-paycrest/api-reference#paycrestorder) in the API reference.
++
++## Receive webhooks
++
++WDK tracks orders by polling. To update your own records as orders progress, verify Paycrest webhooks on your backend with your API secret. The server helper does this for you:
++
++```typescript title="Webhook handling (backend)"
++import { parseWebhookEvent } from '@paycrest/wdk-protocol-fiat-paycrest/server'
++
++const event = parseWebhookEvent(rawBody, req.headers['x-paycrest-signature'], process.env.PAYCREST_API_SECRET)
++
++console.log(event.event, event.data.id, event.wdkStatus) // e.g. 'payment_order.settled', '...', 'completed'
++```
++
++Branch on `event`, not on `data.status`: `payment_order.compliance_hold` is sent while the order status stays `pending`.
++
++## Next Steps
++
++- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
++- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
++- [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration)
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx
+new file mode 100644
+index 0000000..bc50e08
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx
+@@ -0,0 +1,81 @@
++---
++title: On-ramp and off-ramp with Paycrest
++description: Quote, create, and track Paycrest stablecoin on-ramp and off-ramp orders for African fiat currencies inside a WDK app.
++docType: explanation
++schemaType: TechArticle
++---
++
++<Callout type="warn">
++Community modules are developed and maintained independently by third-party contributors.
++
++Tether and the WDK Team do not endorse or assume responsibility for their code, security, or maintenance. Use your own judgment and proceed at your own risk.
++</Callout>
++
++Use the Paycrest fiat module to let users buy and sell stablecoins with local fiat currencies inside your application. [Paycrest](https://www.paycrest.io/) is a neutral, non-custodial stablecoin-fiat routing protocol that connects on-chain stablecoins to bank accounts and mobile money wallets.
++
++The module is API-based rather than widget-based. Quotes and supported-asset lists come from Paycrest's public endpoints, so the module can run inside your wallet app. Order creation and lookup go through `checkoutUrl` and `getOrder` callbacks that reach your backend, which holds your Paycrest API key and webhook secret.
++
++Get started by reading the [Usage](/sdk/fiat-modules/fiat-paycrest/usage) guide.
++
++<Callout type="info">
++This module requires a Paycrest sender account. [Create your account here](https://app.paycrest.io/).
++</Callout>
++
++<Callout type="warn">
++This package is in beta. Paycrest runs on mainnet only, so test with small amounts first.
++</Callout>
++
++## Features
++
++- **Fiat On-Ramp**: Create orders where users pay fiat into a virtual account and receive stablecoins
++- **Fiat Off-Ramp**: Create orders where users send stablecoins and a bank or mobile money account receives fiat
++- **Price Quotes**: Get live buy and sell quotes from Paycrest's public rates, no API key required
++- **Transaction Tracking**: Retrieve order status and details by order id
++- **Currency Support**: Query supported stablecoins, networks, fiat currencies, and countries from the API
++- **Backend Helper**: Optional server helper for order creation, order lookup, webhook verification, and a funding instructions page
++
++## Supported Corridors
++
++| Fiat | Country | Stablecoin | On-ramp | Off-ramp | Channels |
++|------|---------|------------|---------|----------|----------|
++| NGN | Nigeria | USD₮ | Yes | Yes | Bank, mobile |
++| KES | Kenya | USD₮ | Yes | Yes | Bank, M-Pesa |
++| UGX | Uganda | USD₮ | Yes | Yes | Bank, mobile money |
++| TZS | Tanzania | USD₮ | Yes | Yes | Bank, mobile money |
++
++{/* token-check-allow: USDC */}
++The same corridors also support USDC.
++
++Availability for a given stablecoin, network, direction, and amount depends on live provider coverage. Use [`getSupportedCryptoAssets()`](/sdk/fiat-modules/fiat-paycrest/api-reference) for the exact codes and networks, and a quote to confirm a corridor before creating an order.
++
++## Supported Networks
++
++USD₮ is available on Ethereum, Base, Arbitrum One, Polygon, BNB Smart Chain, Celo, Starknet, Tron, and Solana. Pass the network with `config.network` or set a default `network` in the module configuration.
++
++## Next Steps
++
++<Cards>
++<Card title="Configuration" href="/sdk/fiat-modules/fiat-paycrest/configuration">
++Set up your backend routes, callbacks, and module options
++</Card>
++<Card title="Usage Guide" href="/sdk/fiat-modules/fiat-paycrest/usage">
++Learn how to integrate Paycrest in your application
++</Card>
++<Card title="API Reference" href="/sdk/fiat-modules/fiat-paycrest/api-reference">
++Complete API documentation for the module
++</Card>
++</Cards>
++
++---
++
++### Paycrest Resources
++
++- [Paycrest Dashboard](https://app.paycrest.io/) - Create your sender account and manage API keys
++- [Paycrest Documentation](https://docs.paycrest.io/) - Official Paycrest protocol and API documentation
++- [Sender API Integration](https://docs.paycrest.io/implementation-guides/sender-api-integration) - Order creation, KYC, and webhook details
++
++---
++
++### Need Help?
++
++<SupportCards />
+diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx
+new file mode 100644
+index 0000000..9093aac
+--- /dev/null
++++ b/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx
+@@ -0,0 +1,37 @@
++---
++title: Fiat Paycrest Usage
++description: How to use the @paycrest/wdk-protocol-fiat-paycrest module
++docType: how-to
++schemaType: TechArticle
++icon: BookOpen
++---
++
++# Usage
++
++The [@paycrest/wdk-protocol-fiat-paycrest](https://www.npmjs.com/package/@paycrest/wdk-protocol-fiat-paycrest) module quotes, creates, and tracks Paycrest on-ramp and off-ramp orders. Run the module in your app and its order callbacks against your backend, then use the guides below for setup, trading, and transaction follow-up.
++
++<Cards>
++<Card title="Get Started" href="/sdk/fiat-modules/fiat-paycrest/guides/get-started">
++Install the package, set up your backend, and register PaycrestProtocol with WDK.
++</Card>
++<Card title="Buy and Sell" href="/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell">
++On-ramp, off-ramp, quotes, supported assets, multi-network assets, and funding from the wallet.
++</Card>
++<Card title="Manage Transactions" href="/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions">
++Check status and load order details from Paycrest.
++</Card>
++</Cards>
++
++<Cards>
++<Card title="Node.js Quickstart" href="/start-building/nodejs-bare-quickstart">
++Get started with WDK in a Node.js environment
++</Card>
++<Card title="Fiat Paycrest Configuration" href="/sdk/fiat-modules/fiat-paycrest/configuration">
++Backend routes, callbacks, caching, and Paycrest configuration options
++</Card>
++<Card title="Fiat Paycrest API Reference" href="/sdk/fiat-modules/fiat-paycrest/api-reference">
++Constructor, methods, and types for PaycrestProtocol
++</Card>
++</Cards>
++
++<SupportCards />
+diff --git a/content/docs/sdk/fiat-modules/index.mdx b/content/docs/sdk/fiat-modules/index.mdx
+index af6f4b8..f412d5e 100644
+--- a/content/docs/sdk/fiat-modules/index.mdx
++++ b/content/docs/sdk/fiat-modules/index.mdx
+@@ -15,6 +15,7 @@ On-ramp and off-ramp functionality for fiat currency integration:
+ |--------|----------|--------|---------------|
+ | [`@tetherto/wdk-protocol-fiat-moonpay`](https://github.com/tetherto/wdk-protocol-fiat-moonpay) | MoonPay | ✅ Ready | [Documentation](/sdk/fiat-modules/fiat-moonpay/) |
+ | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Transak | ✅ Ready | [Documentation](/sdk/fiat-modules/fiat-transak/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | ✅ Ready | [Documentation](/sdk/fiat-modules/fiat-paycrest/) |
+ 
+ ## Features
+ 
+diff --git a/content/feeds/all-modules.md b/content/feeds/all-modules.md
+index ade9a00..d0f044a 100644
+--- a/content/feeds/all-modules.md
++++ b/content/feeds/all-modules.md
+@@ -126,6 +126,7 @@ On-ramp and off-ramp functionality for fiat currency integration.
+ |--------|----------|-------------|---------------|
+ | [`@tetherto/wdk-protocol-fiat-moonpay`](https://github.com/tetherto/wdk-protocol-fiat-moonpay) | MoonPay | MoonPay integration for fiat on-ramp | [Docs](/sdk/fiat-modules/fiat-moonpay/) |
+ | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Transak | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin on-ramp and off-ramp in NGN, KES, UGX, and TZS | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
+ 
+ ## Community Modules
+ 
+@@ -157,3 +158,4 @@ Tether and the WDK Team do not endorse or assume responsibility for their code,
+ | [`@swapdk/wdk-protocol-swidge-swapdk`](https://www.npmjs.com/package/@swapdk/wdk-protocol-swidge-swapdk) | Swidge | Routes through SwapDK | [README](https://github.com/Swap-DK/wdk-protocol-bridges-swapdk#readme) |
+ | [`@gobob/wdk-protocol-swidge-gateway`](https://www.npmjs.com/package/@gobob/wdk-protocol-swidge-gateway) | Swidge | Routes through the BOB Gateway | [README](https://github.com/bob-collective/wdk-protocol-swidge-gateway#readme) |
+ | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Fiat | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Fiat | Paycrest Sender API integration for stablecoin on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
+diff --git a/public/llms-full.txt b/public/llms-full.txt
+index c26fa59..5b78aa5 100644
+--- a/public/llms-full.txt
++++ b/public/llms-full.txt
+@@ -65986,6 +65986,7 @@ On-ramp and off-ramp functionality for fiat currency integration.
+ |--------|----------|-------------|---------------|
+ | [`@tetherto/wdk-protocol-fiat-moonpay`](https://github.com/tetherto/wdk-protocol-fiat-moonpay) | MoonPay | MoonPay integration for fiat on-ramp | [Docs](/sdk/fiat-modules/fiat-moonpay/) |
+ | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Transak | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin on-ramp and off-ramp in NGN, KES, UGX, and TZS | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
+ 
+ ## Community Modules
+ 
+@@ -66017,5 +66018,6 @@ Tether and the WDK Team do not endorse or assume responsibility for their code,
+ | [`@swapdk/wdk-protocol-swidge-swapdk`](https://www.npmjs.com/package/@swapdk/wdk-protocol-swidge-swapdk) | Swidge | Routes through SwapDK | [README](https://github.com/Swap-DK/wdk-protocol-bridges-swapdk#readme) |
+ | [`@gobob/wdk-protocol-swidge-gateway`](https://www.npmjs.com/package/@gobob/wdk-protocol-swidge-gateway) | Swidge | Routes through the BOB Gateway | [README](https://github.com/bob-collective/wdk-protocol-swidge-gateway#readme) |
+ | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Fiat | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Fiat | Paycrest Sender API integration for stablecoin on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
+ 
+ ***
+diff --git a/public/llms.txt b/public/llms.txt
+index cb66133..91e474e 100644
+--- a/public/llms.txt
++++ b/public/llms.txt
+@@ -112,6 +112,13 @@
+ - [Get Started](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/guides/get-started.md)
+ - [Manage Transactions](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/guides/manage-transactions.md)
+ - [Fiat Transak Usage](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/usage.md)
++- [On-ramp and off-ramp with Paycrest](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest.md)
++- [Fiat Paycrest API Reference](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/api-reference.md)
++- [Fiat Paycrest Configuration](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/configuration.md)
++- [Buy and Sell](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.md)
++- [Get Started](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/guides/get-started.md)
++- [Manage Transactions](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.md)
++- [Fiat Paycrest Usage](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-paycrest/usage.md)
+ - [Get Started](https://docs.wdk.tether.io/sdk/get-started.md)
+ - [Lending Modules Overview](https://docs.wdk.tether.io/sdk/lending-modules.md)
+ - [Lend with Aave](https://docs.wdk.tether.io/sdk/lending-modules/lending-aave-evm.md)
+diff --git a/src/lib/custom-tree.ts b/src/lib/custom-tree.ts
+index aecb45b..36c4810 100644
+--- a/src/lib/custom-tree.ts
++++ b/src/lib/custom-tree.ts
+@@ -477,6 +477,16 @@ export const customTree: Node[] = [
+     configuration('/sdk/fiat-modules/fiat-transak/configuration'),
+     apiReference('/sdk/fiat-modules/fiat-transak/api-reference'),
+   ]),
++  folder('Paycrest', '/sdk/fiat-modules/fiat-paycrest', 'CreditCard', [
++    usage('/sdk/fiat-modules/fiat-paycrest/usage'),
++    guides([
++      page('Get Started', '/sdk/fiat-modules/fiat-paycrest/guides/get-started'),
++      page('Buy and Sell', '/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell'),
++      page('Manage Transactions', '/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions'),
++    ]),
++    configuration('/sdk/fiat-modules/fiat-paycrest/configuration'),
++    apiReference('/sdk/fiat-modules/fiat-paycrest/api-reference'),
++  ]),
+ 
+   separator('CLI'),
+   folder('WDK CLI', '/cli', 'Terminal', [
+-- 
+2.43.0
+

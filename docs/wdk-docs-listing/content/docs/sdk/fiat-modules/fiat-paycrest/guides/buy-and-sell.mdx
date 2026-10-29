@@ -1,0 +1,144 @@
+---
+title: Buy and Sell
+description: On-ramp, off-ramp, quotes, supported assets, multi-network assets, and funding an off-ramp from the wallet.
+docType: how-to
+schemaType: TechArticle
+---
+
+This guide explains [buying stablecoins (on-ramp)](#buy-stablecoins-on-ramp), [selling stablecoins (off-ramp)](#sell-stablecoins-off-ramp), [quotes](#get-price-quotes), [supported currencies](#supported-currencies-and-countries), [multi-network assets](#multi-network-assets), and [funding an off-ramp from the wallet](#fund-an-off-ramp-from-the-wallet). It assumes a [`PaycrestProtocol`](/sdk/fiat-modules/fiat-paycrest/api-reference) instance named `paycrest` from [Get Started](/sdk/fiat-modules/fiat-paycrest/guides/get-started).
+
+<Callout type="info">
+Amounts use base units: fiat in minor units, using the 2 decimals Paycrest reports for NGN, KES, UGX, and TZS (so `5_000_000n` is 50,000.00), and stablecoins in on-chain base units (6 decimals for USD₮ on most networks, 18 on BNB Smart Chain). `cryptoAsset` and `fiatCurrency` are matched case-insensitively against [supported currencies](#supported-currencies-and-countries).
+</Callout>
+
+## Buy stablecoins (on-ramp)
+
+Paycrest identifies the paying customer on every on-ramp order, so [`buy()`](/sdk/fiat-modules/fiat-paycrest/api-reference) requires `config.kyc` and a `config.refundAccount` in the customer's own name:
+
+```typescript title="Buy USDt with NGN"
+const { buyUrl, orderId } = await paycrest.buy({
+  cryptoAsset: 'USDT',
+  fiatCurrency: 'NGN',
+  fiatAmount: 5_000_000n, // 50,000.00 NGN in kobo
+  config: {
+    kyc: {
+      entityType: 'person',
+      personDetails: {
+        fullName: 'Ada Lovelace',
+        birthDate: '1990-04-12',
+        idDocument: { type: 'BVN', number: '00000000000', issuerCountry: 'NG' }
+      }
+    },
+    refundAccount: { institution: 'GTBINGLA', accountIdentifier: '0123456789', accountName: 'Ada Lovelace' }
+  }
+})
+```
+
+Open `buyUrl` for the user. It shows the virtual account to pay into, the exact amount, and the deadline. The stablecoin is delivered to `recipient` or, by default, the account's address. KYC rules vary by currency, for example a BVN or NIN for NGN and a Kenyan phone number in `contact.phoneE164` for KES. See Paycrest's [on-ramp customer KYC](https://docs.paycrest.io/implementation-guides/sender-api-integration#on-ramp-customer-kyc) rules.
+
+<Callout type="warn">
+The customer must pay from their own account. Paycrest returns deposits from anyone else to the account they came from.
+</Callout>
+
+## Sell stablecoins (off-ramp)
+
+[`sell()`](/sdk/fiat-modules/fiat-paycrest/api-reference) needs the fiat payout account in `config.recipient`. Look up institution codes with Paycrest's [`GET /v2/institutions/{currency}`](https://docs.paycrest.io/api-reference/general/list-supported-institutions):
+
+```typescript title="Sell USDt for NGN"
+const { sellUrl, orderId, metadata: order } = await paycrest.sell({
+  cryptoAsset: 'USDT',
+  fiatCurrency: 'NGN',
+  cryptoAmount: 100_000_000n, // 100 USDt, 6 decimals
+  config: {
+    recipient: {
+      institution: 'GTBINGLA',
+      accountIdentifier: '0123456789',
+      accountName: 'Ada Lovelace',
+      memo: 'Rent'
+    },
+    reference: 'your-order-id'
+  }
+})
+```
+
+For Kenyan M-Pesa, use institution `SAFAKEPC` and set `recipient.metadata.channel` to `Mobile`, `Till`, or `Paybill`:
+
+```typescript title="Sell USDt to an M-Pesa Till"
+await paycrest.sell({
+  cryptoAsset: 'USDT',
+  fiatCurrency: 'KES',
+  cryptoAmount: 20_000_000n,
+  config: {
+    recipient: {
+      institution: 'SAFAKEPC',
+      accountIdentifier: '123456',
+      accountName: 'Shop Name',
+      metadata: { channel: 'Till' }
+    }
+  }
+})
+```
+
+The refund address defaults to the account's address; pass `refundAddress` to override it.
+
+## Get price quotes
+
+You can preview a purchase with [`quoteBuy()`](/sdk/fiat-modules/fiat-paycrest/api-reference) and a sale with [`quoteSell()`](/sdk/fiat-modules/fiat-paycrest/api-reference). Both accept either `cryptoAmount` or `fiatAmount`:
+
+```typescript title="Quotes"
+const buyQuote = await paycrest.quoteBuy({ cryptoAsset: 'USDT', fiatCurrency: 'KES', fiatAmount: 5_000_000n })
+console.log('USDt received:', buyQuote.cryptoAmount)
+
+const sellQuote = await paycrest.quoteSell({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', cryptoAmount: 100_000_000n })
+console.log('NGN received:', sellQuote.fiatAmount, 'at', sellQuote.rate)
+```
+
+`rate` is fiat per one stablecoin. `fee` is `0n` because Paycrest's public rate already reflects the provider's price. To route the order to the quote the user saw, pass `config.rate: quote.rate` and `config.providerIds: quote.metadata.providerIds` to `buy()` or `sell()`.
+
+If no provider can serve the token, network, direction, and amount, the quote throws a `PaycrestApiError` with `status` `404`.
+
+## Supported currencies and countries
+
+```typescript title="Supported lists"
+const cryptoAssets = await paycrest.getSupportedCryptoAssets()
+const fiatCurrencies = await paycrest.getSupportedFiatCurrencies()
+const countries = await paycrest.getSupportedCountries()
+```
+
+Each crypto asset is one token on one network, with its contract address under `metadata.contractAddress`. Countries are derived from the supported fiat currencies, because Paycrest has no countries endpoint. Their `isBuyAllowed` and `isSellAllowed` flags are `true` for every listed corridor; confirm live availability with a quote.
+
+## Multi-network assets
+
+USD₮ exists on several networks. Pass `config.network`, or set `network` when constructing the protocol. Without either, a token listed on more than one network throws a `ValueError`:
+
+```typescript title="Sell USDt on Tron"
+const result = await paycrest.sell({
+  cryptoAsset: 'USDT',
+  fiatCurrency: 'UGX',
+  cryptoAmount: 50_000_000n,
+  config: { network: 'tron', recipient: payoutAccount }
+})
+```
+
+If the token is not listed on the requested network, the call throws a `NoSuchElementError`.
+
+## Fund an off-ramp from the wallet
+
+The user already holds the stablecoin in their WDK wallet, so you can fund an off-ramp order directly instead of showing `sellUrl`. Send exactly `amountToTransfer` to `receiveAddress` before `validUntil`:
+
+```typescript title="Fund the order with account.transfer"
+const { amountToTransfer, receiveAddress } = order.providerAccount
+
+const [whole, fraction = ''] = amountToTransfer.split('.')
+const amount = BigInt(whole + fraction.padEnd(6, '0').slice(0, 6)) // 6 decimals for USDt on Base
+
+await account.transfer({ token: usdtOnBase.metadata.contractAddress, recipient: receiveAddress, amount })
+```
+
+When `providerAccount.memo` is present, the deposit must include it.
+
+## Next Steps
+
+- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)
+- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
+- [API reference](/sdk/fiat-modules/fiat-paycrest/api-reference)

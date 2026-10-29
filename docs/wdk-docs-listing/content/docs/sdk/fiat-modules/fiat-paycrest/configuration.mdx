@@ -1,0 +1,162 @@
+---
+title: Fiat Paycrest Configuration
+description: Configuration options for the @paycrest/wdk-protocol-fiat-paycrest module
+docType: reference
+schemaType: TechArticle
+icon: Settings
+---
+
+# Configuration
+
+This page covers the module configuration and the backend routes its callbacks call.
+
+## Prerequisites
+
+Before using this module, you need:
+
+1. A Paycrest sender account - [Create an account on the Paycrest Dashboard](https://app.paycrest.io/)
+2. Your sender **API key**, sent as the `API-Key` header on authenticated Sender API requests
+3. Your sender **API secret**, used only to verify webhook signatures
+4. A backend that creates and reads orders on behalf of your users
+
+<Callout type="warn">
+Keep the API key and API secret on your backend. `PaycrestProtocol` never needs them: it calls only Paycrest's public rates, tokens, and currencies endpoints, and it refuses `apiKey` or `apiSecret` in its configuration. Never ship either value in a wallet app, browser bundle, or mobile binary.
+</Callout>
+
+## Installation
+
+```bash
+npm install @paycrest/wdk-protocol-fiat-paycrest
+```
+
+## Basic Configuration
+
+```typescript
+import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
+
+const backend = 'https://your-backend.example.com/paycrest';
+
+const paycrest = new PaycrestProtocol(account, {
+  network: 'base',
+  checkoutUrl: async (request) => {
+    const res = await fetch(`${backend}/orders`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: `Bearer ${sessionToken}` },
+      body: JSON.stringify(request),
+    });
+    if (!res.ok) throw new Error(`Paycrest checkout failed: ${res.status}`);
+    return res.json(); // { url, orderId, order }
+  },
+  getOrder: async (orderId) => {
+    const res = await fetch(`${backend}/orders/${encodeURIComponent(orderId)}`, {
+      headers: { authorization: `Bearer ${sessionToken}` },
+    });
+    if (!res.ok) throw new Error(`Paycrest order lookup failed: ${res.status}`);
+    return res.json();
+  },
+});
+```
+
+## Configuration Options
+
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `checkoutUrl` | function | For `buy`/`sell` | - | Callback `(request) => Promise<string \| { url, orderId?, order? }>`. Receives `{ direction, order }`, where `order` is the `POST /v2/sender/orders` payload. Your backend creates the order and returns a checkout URL. `buy`/`sell` throw without it. |
+| `getOrder` | function | For `getTransactionDetail` | - | Callback `(orderId) => Promise<PaycrestOrder>` that fetches the order through your backend. `getTransactionDetail` throws without it. |
+| `network` | string | No | - | Default Paycrest network, such as `base`, `ethereum`, `arbitrum-one`, `polygon`, `bnb-smart-chain`, `celo`, `starknet`, `tron`, or `solana`. Required when a token exists on several networks and a call omits `config.network`. |
+| `baseUrl` | string | No | `https://api.paycrest.io` | Paycrest API origin |
+| `cacheTime` | number | No | `600000` (10 min) | Duration in milliseconds to cache supported tokens and currencies |
+| `fetch` | function | No | global `fetch` | Custom fetch implementation |
+
+## Constructor Overloads
+
+```typescript
+// With WDK core, the registered account is passed for you.
+const paycrest = account.getFiatProtocol('paycrest');
+
+// Standalone, bound to an account: its address is the default buy recipient and sell refund address.
+const paycrest = new PaycrestProtocol(account, config);
+
+// Standalone, unbound: pass `recipient` to buy() and `refundAddress` to sell().
+const paycrest = new PaycrestProtocol(undefined, config);
+```
+
+`PaycrestProtocol` only reads the account's address. It never signs with it.
+
+## Implementing the backend routes
+
+Your backend needs three routes. You can write them with any framework or mount the optional helper exported from `@paycrest/wdk-protocol-fiat-paycrest/server`.
+
+| Route | Backs | Does |
+|-------|-------|------|
+| `POST /orders` | `checkoutUrl` | Validates the request, adds your server-side order settings, calls `POST /v2/sender/orders`, and returns `{ url, orderId, order }` |
+| `GET /orders/:id` | `getOrder` | Checks the order belongs to the user, then calls `GET /v2/sender/orders/:id` |
+| `POST /webhooks` | your records | Verifies the `X-Paycrest-Signature` header with your API secret |
+
+### Using the server helper (backend)
+
+```typescript
+import { createServer } from 'node:http';
+import { createPaycrestHandler } from '@paycrest/wdk-protocol-fiat-paycrest/server';
+
+const paycrest = createPaycrestHandler({
+  apiKey: process.env.PAYCREST_API_KEY,
+  apiSecret: process.env.PAYCREST_API_SECRET,
+  publicBaseUrl: 'https://your-backend.example.com/paycrest',
+  authorize: async (req, { action, orderId }) => {
+    // Your session or token check. Return true to allow.
+    return isAllowed(req, action, orderId);
+  },
+  onOrderCreated: async (order, req) => {
+    await saveOrderForUser(order.id, req);
+  },
+  onWebhook: async ({ event, data, wdkStatus }) => {
+    await updateOrder(data.id, event, wdkStatus);
+  },
+});
+
+createServer((req, res) => {
+  if (!req.url.startsWith('/paycrest/')) return res.writeHead(404).end();
+  req.url = req.url.slice('/paycrest'.length);
+  paycrest(req, res);
+}).listen(3000);
+```
+
+The handler serves `POST /orders`, `GET /orders/:id`, `POST /webhooks` (when `apiSecret` is set), and `GET /checkout/:id`, a self-contained page that shows the order's funding instructions and status. By default the returned checkout URL is `${publicBaseUrl}/checkout/{orderId}`. Pass `checkoutUrl: (order) => ...` to send users to a page in your own app instead.
+
+With Express, mount it as middleware. Webhook verification needs the raw body, so mount the handler before any JSON body parser or give it `express.raw()`:
+
+```typescript
+app.use('/paycrest', express.raw({ type: 'application/json' }), paycrest);
+```
+
+### Writing the routes yourself (backend)
+
+```typescript
+import { PaycrestSenderClient, buildOrderPayload, verifyWebhookSignature } from '@paycrest/wdk-protocol-fiat-paycrest/server';
+
+const client = new PaycrestSenderClient({ apiKey: process.env.PAYCREST_API_KEY });
+
+// POST /orders: buildOrderPayload validates the request and drops client-sent fee fields.
+const order = await client.createOrder(buildOrderPayload(req.body));
+res.json({ url: `https://your-app.example.com/pay/${order.id}`, orderId: order.id, order });
+
+// GET /orders/:id
+res.json(await client.getOrder(req.params.id));
+
+// POST /webhooks, using the raw request body
+if (!verifyWebhookSignature(rawBody, req.headers['x-paycrest-signature'], process.env.PAYCREST_API_SECRET)) {
+  return res.status(401).end();
+}
+```
+
+Authorize every route against your own user and order records, rate-limit `POST /orders`, and restrict it to your own origins. Sender fee settings, if you charge one, belong on the backend: pass them through the helper's `orderDefaults` option rather than from the client.
+
+## Environment
+
+Paycrest runs on mainnet only, and there is no sandbox environment. Test with the minimum order size and small amounts until you have verified your integration end to end.
+
+## Next Steps
+
+- [Usage Guide](/sdk/fiat-modules/fiat-paycrest/usage) - Learn how to integrate Paycrest
+- [API Reference](/sdk/fiat-modules/fiat-paycrest/api-reference) - Complete API documentation

@@ -1,0 +1,63 @@
+---
+title: Get Started
+description: Install the package, set up your backend routes, and register PaycrestProtocol with WDK.
+docType: getting-started
+schemaType: TechArticle
+---
+
+This guide covers [installation](#installation), [backend setup](#set-up-your-backend), and [registering the protocol](#register-paycrestprotocol). You need [Node.js](https://nodejs.org/), [npm](https://www.npmjs.com/), and a Paycrest sender account from the [Paycrest Dashboard](https://app.paycrest.io/).
+
+## Installation
+
+Run the following to install [@paycrest/wdk-protocol-fiat-paycrest](https://www.npmjs.com/package/@paycrest/wdk-protocol-fiat-paycrest):
+
+```bash title="Install with npm"
+npm install @paycrest/wdk-protocol-fiat-paycrest
+```
+
+## Set up your backend
+
+Your backend creates and reads orders with your Paycrest API key. The quickest path is the optional server helper:
+
+```typescript title="Backend routes"
+import { createPaycrestHandler } from '@paycrest/wdk-protocol-fiat-paycrest/server'
+
+const paycrest = createPaycrestHandler({
+  apiKey: process.env.PAYCREST_API_KEY,
+  apiSecret: process.env.PAYCREST_API_SECRET,
+  publicBaseUrl: 'https://your-backend.example.com/paycrest',
+  authorize: async (req, context) => isAllowed(req, context)
+})
+```
+
+See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for mounting it, the routes it serves, and how to write them yourself.
+
+## Register PaycrestProtocol
+
+Register the module with [`registerProtocol`](/sdk/core-module/guides/protocol-integration) and pass callbacks that call your backend:
+
+```typescript title="Register with WDK core"
+import WDK from '@tetherto/wdk'
+import WalletManagerEvm from '@tetherto/wdk-wallet-evm'
+import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest'
+
+const wdk = new WDK(seedPhrase)
+  .registerWallet('base', WalletManagerEvm, { provider: 'https://mainnet.base.org' })
+  .registerProtocol('base', 'paycrest', PaycrestProtocol, {
+    network: 'base',
+    checkoutUrl, // POST your backend's /orders route
+    getOrder // GET your backend's /orders/:id route
+  })
+
+const account = await wdk.getAccount('base', 0)
+const paycrest = account.getFiatProtocol('paycrest')
+```
+
+<Callout type="warn">
+The module holds no Paycrest credentials and refuses `apiKey` or `apiSecret` in its configuration. Keep both on your backend.
+</Callout>
+
+## Next Steps
+
+- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
+- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)

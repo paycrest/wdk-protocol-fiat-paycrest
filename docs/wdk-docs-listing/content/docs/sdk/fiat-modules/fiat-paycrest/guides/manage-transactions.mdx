@@ -1,0 +1,71 @@
+---
+title: Manage Transactions
+description: Fetch Paycrest order status and inspect returned details.
+docType: how-to
+schemaType: TechArticle
+---
+
+This guide assumes the `paycrest` instance from [Get Started](/sdk/fiat-modules/fiat-paycrest/guides/get-started). It shows how to [check transaction status](#check-transaction-status), [read transaction details](#read-transaction-details), and [receive webhooks](#receive-webhooks) with [`getTransactionDetail()`](/sdk/fiat-modules/fiat-paycrest/api-reference). Pass the `orderId` returned by `buy()` or `sell()`. The same id works for both directions.
+
+<Callout type="info">
+`getTransactionDetail` delegates the authenticated lookup to your `getOrder` callback. It throws `A 'getOrder' callback is required to fetch a Paycrest order` if one wasn't configured. See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for the backend route.
+</Callout>
+
+<Callout type="warn">
+Treat any order id received from a client as untrusted. Before calling Paycrest or returning order data, verify on your backend that it belongs to the authenticated user.
+</Callout>
+
+## Check transaction status
+
+```typescript title="Transaction status"
+const tx = await paycrest.getTransactionDetail(orderId)
+
+console.log('Status:', tx.status)
+```
+
+`status` is one of `completed`, `failed`, or `in_progress`, normalised from Paycrest's order status and direction:
+
+| WDK status | Off-ramp Paycrest status | On-ramp Paycrest status |
+|------------|--------------------------|-------------------------|
+| `completed` | `validated`, `settling`, `settled` | `settled` |
+| `failed` | `refunding`, `refunded`, `expired`, `cancelled` | `refunding`, `refunded`, `expired`, `cancelled` |
+| `in_progress` | `initiated`, `deposited`, `pending`, `fulfilling`, `fulfilled`, and any unrecognised status | `initiated`, `pending`, `fulfilling`, `validated`, `settling`, and any unrecognised status |
+
+An off-ramp is complete at `validated`, when the provider confirms the fiat payout. An on-ramp is complete at `settled`, when the stablecoin is confirmed on-chain at the recipient's address. An on-ramp held for compliance review stays `pending`, so it reads `in_progress` until it settles or is refunded. Do not ask the user to pay again while it is held.
+
+## Read transaction details
+
+```typescript title="Transaction fields"
+const tx = await paycrest.getTransactionDetail(orderId)
+
+console.log('Crypto asset:', tx.cryptoAsset) // e.g. 'USDT'
+console.log('Fiat currency:', tx.fiatCurrency) // e.g. 'NGN'
+console.log('Direction:', tx.metadata.direction) // 'onramp' or 'offramp'
+console.log('Paycrest status:', tx.metadata.status)
+```
+
+<Callout type="warn">
+The order under `metadata` can contain account and transaction details. Minimize retention and do not write the raw object to application logs or analytics.
+</Callout>
+
+The raw order under `metadata` includes fields such as `providerAccount` (funding instructions), `amount`, `rate`, `reference`, `txHash`, and, on off-ramp orders, `paymentReference` (the payout receipt from the bank or mobile money network). See [`PaycrestOrder`](/sdk/fiat-modules/fiat-paycrest/api-reference#paycrestorder) in the API reference.
+
+## Receive webhooks
+
+WDK tracks orders by polling. To update your own records as orders progress, verify Paycrest webhooks on your backend with your API secret. The server helper does this for you:
+
+```typescript title="Webhook handling (backend)"
+import { parseWebhookEvent } from '@paycrest/wdk-protocol-fiat-paycrest/server'
+
+const event = parseWebhookEvent(rawBody, req.headers['x-paycrest-signature'], process.env.PAYCREST_API_SECRET)
+
+console.log(event.event, event.data.id, event.wdkStatus) // e.g. 'payment_order.settled', '...', 'completed'
+```
+
+Branch on `event`, not on `data.status`: `payment_order.compliance_hold` is sent while the order status stays `pending`.
+
+## Next Steps
+
+- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
+- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
+- [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration)

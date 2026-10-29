@@ -1,0 +1,312 @@
+---
+title: Fiat Paycrest API Reference
+description: API Reference for the @paycrest/wdk-protocol-fiat-paycrest module
+docType: reference
+schemaType: APIReference
+icon: Code
+---
+
+# API Reference
+
+Complete API documentation for the `@paycrest/wdk-protocol-fiat-paycrest` module.
+
+## Constructor
+
+### `new PaycrestProtocol(account, config)`
+
+Creates a new PaycrestProtocol instance. It calls only Paycrest's public endpoints and holds no credentials, so it can run in your wallet app.
+
+**Parameters:**
+
+| Name | Type | Description |
+|------|------|-------------|
+| `account` | `IWalletAccount` \| `IWalletAccountReadOnly` \| `undefined` | Optional account. Its address is the default `recipient` for `buy()` and the default `refundAddress` for `sell()`. The module never signs with it. |
+| `config` | `PaycrestProtocolConfig` | Configuration object |
+
+**Config Options:**
+
+| Name | Type | Required | Default | Description |
+|------|------|----------|---------|-------------|
+| `checkoutUrl` | function | For `buy`/`sell` | - | Callback `(request: PaycrestCheckoutRequest) => Promise<PaycrestCheckoutResult>` that creates the order through your backend and returns a checkout URL. `buy`/`sell` throw without it. |
+| `getOrder` | function | For `getTransactionDetail` | - | Callback `(orderId) => Promise<PaycrestOrder>` that fetches the order through your backend. `getTransactionDetail` throws without it. |
+| `network` | string | No | - | Default Paycrest network used when a call omits `config.network` |
+| `baseUrl` | string | No | `https://api.paycrest.io` | Paycrest API origin |
+| `cacheTime` | number | No | `600000` | Cache duration for supported tokens and currencies (ms) |
+| `fetch` | function | No | global `fetch` | Custom fetch implementation |
+
+The constructor throws a `ValueError` if `config` contains `apiKey` or `apiSecret`.
+
+**Example:**
+
+```typescript
+import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
+
+const paycrest = new PaycrestProtocol(account, { network: 'base', checkoutUrl, getOrder });
+```
+
+See [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration#implementing-the-backend-routes) for the backend routes behind `checkoutUrl` and `getOrder`.
+
+---
+
+## Methods
+
+### `buy(options)`
+
+Assembles an on-ramp order (fiat in, stablecoin out) and returns the checkout URL from your `checkoutUrl` callback.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `options.cryptoAsset` | string | Yes | Stablecoin code (e.g. `'USDT'`) |
+| `options.fiatCurrency` | string | Yes | Fiat currency code (e.g. `'NGN'`) |
+| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
+| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
+| `options.recipient` | string | No | Wallet address that receives the stablecoin (falls back to the account address) |
+| `options.config` | `PaycrestBuyParams` | Yes | Customer `kyc`, `refundAccount`, and optional order parameters |
+
+*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
+
+**Returns:** `Promise<{ buyUrl: string, orderId?: string, metadata?: PaycrestOrder }>`
+
+`orderId` and `metadata` are present when your callback returns the object form `{ url, orderId, order }`.
+
+---
+
+### `sell(options)`
+
+Assembles an off-ramp order (stablecoin in, fiat out) and returns the checkout URL from your `checkoutUrl` callback.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `options.cryptoAsset` | string | Yes | Stablecoin code (e.g. `'USDT'`) |
+| `options.fiatCurrency` | string | Yes | Fiat currency code (e.g. `'KES'`) |
+| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
+| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
+| `options.refundAddress` | string | No | Address for refunds if the order cannot be fulfilled (falls back to the account address) |
+| `options.config` | `PaycrestSellParams` | Yes | Payout `recipient` and optional order parameters |
+
+*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
+
+**Returns:** `Promise<{ sellUrl: string, orderId?: string, metadata?: PaycrestOrder }>`
+
+---
+
+### `quoteBuy(options)`
+
+Gets an on-ramp quote from `GET /v2/rates/{network}/{token}/{amount}/{fiat}?side=buy`.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `options.cryptoAsset` | string | Yes | Stablecoin code |
+| `options.fiatCurrency` | string | Yes | Fiat currency code |
+| `options.cryptoAmount` | number \| bigint | No* | Amount in stablecoin base units |
+| `options.fiatAmount` | number \| bigint | No* | Amount in fiat minor units |
+| `options.config` | `PaycrestQuoteParams` | No | `network` and `providerId` |
+
+*Either `cryptoAmount` or `fiatAmount` must be provided, but not both.
+
+**Returns:** `Promise<PaycrestQuote>`
+
+```typescript
+const quote = await paycrest.quoteBuy({ cryptoAsset: 'USDT', fiatCurrency: 'NGN', fiatAmount: 5_000_000n });
+// { cryptoAmount: 33327778n, fiatAmount: 5000000n, fee: 0n, rate: '1500.25', metadata: { side: 'buy', network: 'base', providerIds: [...] } }
+```
+
+---
+
+### `quoteSell(options)`
+
+Gets an off-ramp quote from `GET /v2/rates/{network}/{token}/{amount}/{fiat}?side=sell`. Takes the same parameters as `quoteBuy`.
+
+**Returns:** `Promise<PaycrestQuote>`
+
+---
+
+### `getSupportedCryptoAssets()`
+
+Lists stablecoins from `GET /v2/tokens`, one entry per token and network.
+
+**Returns:** `Promise<PaycrestSupportedCryptoAsset[]>`
+
+```typescript
+// [{ code: 'USDT', networkCode: 'base', decimals: 6, name: 'USDT', metadata: { contractAddress: '0x...', ... } }, ...]
+```
+
+---
+
+### `getSupportedFiatCurrencies()`
+
+Lists fiat currencies from `GET /v2/currencies`, with the decimals Paycrest reports.
+
+**Returns:** `Promise<PaycrestSupportedFiatCurrency[]>`
+
+---
+
+### `getSupportedCountries()`
+
+Derives countries from the supported fiat currencies. `isBuyAllowed` and `isSellAllowed` are `true` for every listed corridor; quotes confirm live availability.
+
+**Returns:** `Promise<PaycrestSupportedCountry[]>`
+
+---
+
+### `getTransactionDetail(txId)`
+
+Fetches an order through your `getOrder` callback and normalises its status.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `txId` | string | Yes | The Paycrest order id |
+
+**Returns:** `Promise<PaycrestTransactionDetail>`
+
+```typescript
+// { status: 'completed', cryptoAsset: 'USDT', fiatCurrency: 'NGN', metadata: PaycrestOrder }
+```
+
+---
+
+## Types
+
+### `PaycrestCheckoutRequest`
+
+What `buy()` and `sell()` pass to your `checkoutUrl` callback. `order` is the `POST /v2/sender/orders` body, without credentials or sender fee settings.
+
+```typescript
+interface PaycrestCheckoutRequest {
+  direction: 'onramp' | 'offramp';
+  order: {
+    amount: string; // major units of the amountIn side
+    amountIn: 'crypto' | 'fiat';
+    source: object; // { type: 'fiat', ... } for on-ramp, { type: 'crypto', ... } for off-ramp
+    destination: object; // { type: 'crypto', ... } for on-ramp, { type: 'fiat', ... } for off-ramp
+    reference?: string;
+    rate?: string;
+  };
+}
+
+type PaycrestCheckoutResult = string | { url: string; orderId?: string; order?: PaycrestOrder };
+```
+
+### `PaycrestBuyParams`
+
+```typescript
+interface PaycrestBuyParams {
+  kyc: PaycrestKyc; // required: the customer paying in fiat
+  refundAccount: PaycrestFiatAccount; // required: the customer's own account
+  network?: string;
+  country?: string; // ISO 3166-1 alpha-2
+  recipientKyc?: PaycrestKyc;
+  reference?: string;
+  rate?: string; // lock a quoted rate
+  providerIds?: string[]; // only the first is sent on on-ramp
+}
+```
+
+### `PaycrestSellParams`
+
+```typescript
+interface PaycrestSellParams {
+  recipient: PaycrestFiatAccount & {
+    memo?: string; // defaults to `reference`, then 'Payment'
+    metadata?: { channel?: 'Mobile' | 'Till' | 'Paybill'; businessNumber?: string }; // KES M-Pesa
+  };
+  network?: string;
+  country?: string;
+  kyc?: PaycrestKyc; // the customer sending the stablecoin
+  recipientKyc?: PaycrestKyc;
+  reference?: string;
+  rate?: string;
+  providerIds?: string[]; // up to 3, from quoteSell
+}
+```
+
+### `PaycrestFiatAccount`
+
+```typescript
+interface PaycrestFiatAccount {
+  institution: string; // from GET /v2/institutions/{currency}, e.g. 'GTBINGLA', 'SAFAKEPC'
+  accountIdentifier: string;
+  accountName: string;
+}
+```
+
+### `PaycrestKyc`
+
+The Paycrest `KYCDetail` shape. See [On-ramp customer KYC](https://docs.paycrest.io/implementation-guides/sender-api-integration#on-ramp-customer-kyc) for the per-currency rules.
+
+```typescript
+interface PaycrestKyc {
+  entityType: 'person' | 'organization';
+  personDetails?: { fullName: string; birthDate: string; idDocument: { type: string; number: string; issuerCountry: string }; contact?: { phoneE164?: string } };
+  organizationDetails?: object;
+  principalAddress?: object;
+}
+```
+
+### `PaycrestQuoteParams`
+
+```typescript
+interface PaycrestQuoteParams {
+  network?: string;
+  providerId?: string; // 8 letters, limits the quote to one provider
+}
+```
+
+### `PaycrestQuote`
+
+```typescript
+interface PaycrestQuote {
+  cryptoAmount: bigint;
+  fiatAmount: bigint;
+  fee: bigint; // always 0n: public rates already reflect the provider's price
+  rate: string; // fiat per 1 stablecoin
+  metadata: {
+    side: 'buy' | 'sell';
+    network: string;
+    rate: string;
+    providerIds: string[]; // ranked, best first
+    orderType?: string;
+    refundTimeoutMinutes?: number;
+  };
+}
+```
+
+### `PaycrestOrder`
+
+The order returned by your `getOrder` callback (Paycrest's `GET /v2/sender/orders/{id}`), exposed as `metadata` on `PaycrestTransactionDetail`:
+
+```typescript
+interface PaycrestOrder {
+  id: string;
+  status: 'initiated' | 'deposited' | 'pending' | 'fulfilling' | 'fulfilled' | 'validated' | 'settling' | 'settled' | 'cancelled' | 'refunding' | 'refunded' | 'expired';
+  direction?: 'onramp' | 'offramp';
+  amount?: string;
+  rate?: string;
+  reference?: string;
+  txHash?: string;
+  paymentReference?: string | null; // off-ramp payout receipt
+  providerAccount?: object; // receive address (off-ramp) or virtual account (on-ramp)
+  source: { type: 'crypto' | 'fiat'; currency: string };
+  destination: { type: 'crypto' | 'fiat'; currency: string };
+}
+```
+
+### `PaycrestApiError`
+
+Thrown when a Paycrest request fails.
+
+```typescript
+class PaycrestApiError extends Error {
+  status?: number; // HTTP status, e.g. 404 when no provider is available
+  data?: unknown; // Paycrest error details
+  retryAfter?: number; // seconds, on rate limiting
+}
+```
