@@ -29,7 +29,7 @@ Keep the API key and API secret on your backend. `PaycrestProtocol` never needs 
 npm install @paycrest/wdk-protocol-fiat-paycrest
 ```
 
-## Basic Configuration
+## Basic configuration
 
 ```typescript
 import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
@@ -57,7 +57,7 @@ const paycrest = new PaycrestProtocol(account, {
 });
 ```
 
-## Configuration Options
+## Configuration options
 
 | Option | Type | Required | Default | Description |
 |--------|------|----------|---------|-------------|
@@ -68,7 +68,7 @@ const paycrest = new PaycrestProtocol(account, {
 | `cacheTime` | number | No | `600000` (10 min) | Duration in milliseconds to cache supported tokens and currencies |
 | `fetch` | function | No | global `fetch` | Custom fetch implementation |
 
-## Constructor Overloads
+## Constructor overloads
 
 ```typescript
 // With WDK core, the registered account is passed for you.
@@ -156,7 +156,7 @@ Authorize every route against your own user and order records, rate-limit `POST 
 
 Paycrest runs on mainnet only, and there is no sandbox environment. Test with the minimum order size and small amounts until you have verified your integration end to end.
 
-## Next Steps
+## Next steps
 
 - [Usage Guide](/sdk/fiat-modules/fiat-paycrest/usage) - Learn how to integrate Paycrest
 - [API Reference](/sdk/fiat-modules/fiat-paycrest/api-reference) - Complete API documentation

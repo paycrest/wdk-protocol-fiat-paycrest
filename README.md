@@ -2,7 +2,7 @@
 
 Paycrest fiat on-ramp and off-ramp module for Tether's [Wallet Development Kit (WDK)](https://docs.wdk.tether.io/). It implements the WDK `FiatProtocol` interface from `@tetherto/wdk-wallet/protocols` on top of the [Paycrest Sender API](https://docs.paycrest.io/implementation-guides/sender-api-integration).
 
-[Paycrest](https://paycrest.io) is a neutral, non-custodial stablecoin-fiat routing protocol. It routes each order between a stablecoin on-chain and a local bank account or mobile money wallet, with settlement handled by the protocol rather than by a custodian.
+[Paycrest](https://paycrest.io) is a neutral, non-custodial stablecoin-fiat routing protocol. Liquidity providers compete to fill orders. Each order routes between a stablecoin on-chain and a local bank account or mobile money wallet; the stablecoin is locked in on-chain escrow until the provider confirms the fiat payout.
 
 > This is a community module maintained by Paycrest. It is not built, endorsed or maintained by Tether or the WDK team.
 
@@ -39,8 +39,8 @@ Paycrest fiat on-ramp and off-ramp module for Tether's [Wallet Development Kit (
 |------|---------|-------------|-----------------|-------------------|----------------------------|
 | NGN | Nigeria | USDT, USDC | Yes | Yes | Bank, mobile |
 | KES | Kenya | USDT, USDC | Yes | Yes | Bank, M-Pesa (phone, Till, Paybill) |
-| UGX | Uganda | USDT, USDC | Yes | Yes | Bank, mobile money |
-| TZS | Tanzania | USDT, USDC | Yes | Yes | Bank, mobile money |
+| UGX | Uganda | USDT, USDC | No | Yes | Bank, mobile money |
+| TZS | Tanzania | USDT, USDC | No | Yes | Bank, mobile money |
 
 USDT and USDC are available on Ethereum, Base, Arbitrum One, Polygon, BNB Smart Chain, Celo, Starknet and Solana, and USDT on Tron. Treat this table as a guide: call `getSupportedCryptoAssets()` and `getSupportedFiatCurrencies()` for the live list. Availability for a specific token, network, direction and amount depends on live provider coverage, which `quoteBuy` and `quoteSell` confirm; they throw a `PaycrestApiError` with status `404` when no provider can serve the request.
 

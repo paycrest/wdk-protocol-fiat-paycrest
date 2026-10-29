@@ -1,6 +1,6 @@
-From f378398aac19191b03be9549051de92bda1fae09 Mon Sep 17 00:00:00 2001
+From 465067acc22315a45ec7d019efdd7afb8bde5602 Mon Sep 17 00:00:00 2001
 From: chibie <chibuotu@gmail.com>
-Date: Thu, 29 Oct 2026 12:18:09 +0000
+Date: Thu, 29 Oct 2026 17:22:06 +0000
 Subject: [PATCH] Add: Paycrest Fiat Module Docs
 
 ---
@@ -27,7 +27,7 @@ Subject: [PATCH] Add: Paycrest Fiat Module Docs
 
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx
 new file mode 100644
-index 0000000..837032c
+index 0000000..e829c57
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/api-reference.mdx
 @@ -0,0 +1,312 @@
@@ -39,7 +39,7 @@ index 0000000..837032c
 +icon: Code
 +---
 +
-+# API Reference
++# API reference
 +
 +Complete API documentation for the `@paycrest/wdk-protocol-fiat-paycrest` module.
 +
@@ -345,7 +345,7 @@ index 0000000..837032c
 +```
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx
 new file mode 100644
-index 0000000..31880d7
+index 0000000..30e61dc
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/configuration.mdx
 @@ -0,0 +1,162 @@
@@ -380,7 +380,7 @@ index 0000000..31880d7
 +npm install @paycrest/wdk-protocol-fiat-paycrest
 +```
 +
-+## Basic Configuration
++## Basic configuration
 +
 +```typescript
 +import PaycrestProtocol from '@paycrest/wdk-protocol-fiat-paycrest';
@@ -408,7 +408,7 @@ index 0000000..31880d7
 +});
 +```
 +
-+## Configuration Options
++## Configuration options
 +
 +| Option | Type | Required | Default | Description |
 +|--------|------|----------|---------|-------------|
@@ -419,7 +419,7 @@ index 0000000..31880d7
 +| `cacheTime` | number | No | `600000` (10 min) | Duration in milliseconds to cache supported tokens and currencies |
 +| `fetch` | function | No | global `fetch` | Custom fetch implementation |
 +
-+## Constructor Overloads
++## Constructor overloads
 +
 +```typescript
 +// With WDK core, the registered account is passed for you.
@@ -507,13 +507,13 @@ index 0000000..31880d7
 +
 +Paycrest runs on mainnet only, and there is no sandbox environment. Test with the minimum order size and small amounts until you have verified your integration end to end.
 +
-+## Next Steps
++## Next steps
 +
 +- [Usage Guide](/sdk/fiat-modules/fiat-paycrest/usage) - Learn how to integrate Paycrest
 +- [API Reference](/sdk/fiat-modules/fiat-paycrest/api-reference) - Complete API documentation
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx
 new file mode 100644
-index 0000000..645f5f2
+index 0000000..64878c5
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell.mdx
 @@ -0,0 +1,144 @@
@@ -656,14 +656,14 @@ index 0000000..645f5f2
 +
 +When `providerAccount.memo` is present, the deposit must include it.
 +
-+## Next Steps
++## Next steps
 +
 +- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)
 +- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
 +- [API reference](/sdk/fiat-modules/fiat-paycrest/api-reference)
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx
 new file mode 100644
-index 0000000..fc816ef
+index 0000000..469349c
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/get-started.mdx
 @@ -0,0 +1,63 @@
@@ -726,13 +726,13 @@ index 0000000..fc816ef
 +The module holds no Paycrest credentials and refuses `apiKey` or `apiSecret` in its configuration. Keep both on your backend.
 +</Callout>
 +
-+## Next Steps
++## Next steps
 +
 +- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
 +- [Manage transactions](/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions/)
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx
 new file mode 100644
-index 0000000..b095727
+index 0000000..f3b66f7
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/guides/manage-transactions.mdx
 @@ -0,0 +1,71 @@
@@ -802,14 +802,14 @@ index 0000000..b095727
 +
 +Branch on `event`, not on `data.status`: `payment_order.compliance_hold` is sent while the order status stays `pending`.
 +
-+## Next Steps
++## Next steps
 +
 +- [Buy and sell](/sdk/fiat-modules/fiat-paycrest/guides/buy-and-sell/)
 +- [Get started](/sdk/fiat-modules/fiat-paycrest/guides/get-started/)
 +- [Configuration](/sdk/fiat-modules/fiat-paycrest/configuration)
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx
 new file mode 100644
-index 0000000..bc50e08
+index 0000000..f06ddec
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/index.mdx
 @@ -0,0 +1,81 @@
@@ -826,7 +826,7 @@ index 0000000..bc50e08
 +Tether and the WDK Team do not endorse or assume responsibility for their code, security, or maintenance. Use your own judgment and proceed at your own risk.
 +</Callout>
 +
-+Use the Paycrest fiat module to let users buy and sell stablecoins with local fiat currencies inside your application. [Paycrest](https://www.paycrest.io/) is a neutral, non-custodial stablecoin-fiat routing protocol that connects on-chain stablecoins to bank accounts and mobile money wallets.
++Use the Paycrest fiat module to let users buy and sell stablecoins with local fiat currencies inside your application. [Paycrest](https://www.paycrest.io/) is a neutral, non-custodial stablecoin-fiat routing protocol that connects on-chain stablecoins to bank accounts and mobile money wallets. Liquidity providers compete to fill orders, and the stablecoin is locked in on-chain escrow until the provider confirms the fiat payout.
 +
 +The module is API-based rather than widget-based. Quotes and supported-asset lists come from Paycrest's public endpoints, so the module can run inside your wallet app. Order creation and lookup go through `checkoutUrl` and `getOrder` callbacks that reach your backend, which holds your Paycrest API key and webhook secret.
 +
@@ -842,32 +842,32 @@ index 0000000..bc50e08
 +
 +## Features
 +
-+- **Fiat On-Ramp**: Create orders where users pay fiat into a virtual account and receive stablecoins
-+- **Fiat Off-Ramp**: Create orders where users send stablecoins and a bank or mobile money account receives fiat
-+- **Price Quotes**: Get live buy and sell quotes from Paycrest's public rates, no API key required
-+- **Transaction Tracking**: Retrieve order status and details by order id
-+- **Currency Support**: Query supported stablecoins, networks, fiat currencies, and countries from the API
-+- **Backend Helper**: Optional server helper for order creation, order lookup, webhook verification, and a funding instructions page
++- **Fiat on-ramp**: Create orders where users pay fiat into a virtual account and receive stablecoins
++- **Fiat off-ramp**: Create orders where users send stablecoins and a bank or mobile money account receives fiat
++- **Price quotes**: Get live buy and sell quotes from Paycrest's public rates, no API key required
++- **Transaction tracking**: Retrieve order status and details by order id
++- **Currency support**: Query supported stablecoins, networks, fiat currencies, and countries from the API
++- **Backend helper**: Optional server helper for order creation, order lookup, webhook verification, and a funding instructions page
 +
-+## Supported Corridors
++## Supported corridors
 +
 +| Fiat | Country | Stablecoin | On-ramp | Off-ramp | Channels |
 +|------|---------|------------|---------|----------|----------|
 +| NGN | Nigeria | USD₮ | Yes | Yes | Bank, mobile |
 +| KES | Kenya | USD₮ | Yes | Yes | Bank, M-Pesa |
-+| UGX | Uganda | USD₮ | Yes | Yes | Bank, mobile money |
-+| TZS | Tanzania | USD₮ | Yes | Yes | Bank, mobile money |
++| UGX | Uganda | USD₮ | No | Yes | Bank, mobile money |
++| TZS | Tanzania | USD₮ | No | Yes | Bank, mobile money |
 +
 +{/* token-check-allow: USDC */}
 +The same corridors also support USDC.
 +
 +Availability for a given stablecoin, network, direction, and amount depends on live provider coverage. Use [`getSupportedCryptoAssets()`](/sdk/fiat-modules/fiat-paycrest/api-reference) for the exact codes and networks, and a quote to confirm a corridor before creating an order.
 +
-+## Supported Networks
++## Supported networks
 +
 +USD₮ is available on Ethereum, Base, Arbitrum One, Polygon, BNB Smart Chain, Celo, Starknet, Tron, and Solana. Pass the network with `config.network` or set a default `network` in the module configuration.
 +
-+## Next Steps
++## Next steps
 +
 +<Cards>
 +<Card title="Configuration" href="/sdk/fiat-modules/fiat-paycrest/configuration">
@@ -883,7 +883,7 @@ index 0000000..bc50e08
 +
 +---
 +
-+### Paycrest Resources
++### Paycrest resources
 +
 +- [Paycrest Dashboard](https://app.paycrest.io/) - Create your sender account and manage API keys
 +- [Paycrest Documentation](https://docs.paycrest.io/) - Official Paycrest protocol and API documentation
@@ -891,12 +891,12 @@ index 0000000..bc50e08
 +
 +---
 +
-+### Need Help?
++### Need help?
 +
 +<SupportCards />
 diff --git a/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx b/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx
 new file mode 100644
-index 0000000..9093aac
+index 0000000..1b751f9
 --- /dev/null
 +++ b/content/docs/sdk/fiat-modules/fiat-paycrest/usage.mdx
 @@ -0,0 +1,37 @@
@@ -910,7 +910,7 @@ index 0000000..9093aac
 +
 +# Usage
 +
-+The [@paycrest/wdk-protocol-fiat-paycrest](https://www.npmjs.com/package/@paycrest/wdk-protocol-fiat-paycrest) module quotes, creates, and tracks Paycrest on-ramp and off-ramp orders. Run the module in your app and its order callbacks against your backend, then use the guides below for setup, trading, and transaction follow-up.
++The [@paycrest/wdk-protocol-fiat-paycrest](https://www.npmjs.com/package/@paycrest/wdk-protocol-fiat-paycrest) module quotes, creates, and tracks Paycrest on-ramp and off-ramp orders. Run the module in your app and its order callbacks against your backend, then use the guides below for setup, buy and sell flows, and transaction follow-up.
 +
 +<Cards>
 +<Card title="Get Started" href="/sdk/fiat-modules/fiat-paycrest/guides/get-started">
@@ -950,14 +950,14 @@ index af6f4b8..f412d5e 100644
  ## Features
  
 diff --git a/content/feeds/all-modules.md b/content/feeds/all-modules.md
-index ade9a00..d0f044a 100644
+index ade9a00..7cd6780 100644
 --- a/content/feeds/all-modules.md
 +++ b/content/feeds/all-modules.md
 @@ -126,6 +126,7 @@ On-ramp and off-ramp functionality for fiat currency integration.
  |--------|----------|-------------|---------------|
  | [`@tetherto/wdk-protocol-fiat-moonpay`](https://github.com/tetherto/wdk-protocol-fiat-moonpay) | MoonPay | MoonPay integration for fiat on-ramp | [Docs](/sdk/fiat-modules/fiat-moonpay/) |
  | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Transak | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
-+| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin on-ramp and off-ramp in NGN, KES, UGX, and TZS | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin off-ramp to NGN, KES, UGX, and TZS, and on-ramp from NGN and KES | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
  
  ## Community Modules
  
@@ -967,18 +967,18 @@ index ade9a00..d0f044a 100644
  | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Fiat | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
 +| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Fiat | Paycrest Sender API integration for stablecoin on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
 diff --git a/public/llms-full.txt b/public/llms-full.txt
-index c26fa59..5b78aa5 100644
+index 1f0acd2..d7e80b7 100644
 --- a/public/llms-full.txt
 +++ b/public/llms-full.txt
-@@ -65986,6 +65986,7 @@ On-ramp and off-ramp functionality for fiat currency integration.
+@@ -64011,6 +64011,7 @@ On-ramp and off-ramp functionality for fiat currency integration.
  |--------|----------|-------------|---------------|
  | [`@tetherto/wdk-protocol-fiat-moonpay`](https://github.com/tetherto/wdk-protocol-fiat-moonpay) | MoonPay | MoonPay integration for fiat on-ramp | [Docs](/sdk/fiat-modules/fiat-moonpay/) |
  | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Transak | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
-+| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin on-ramp and off-ramp in NGN, KES, UGX, and TZS | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
++| [`@paycrest/wdk-protocol-fiat-paycrest`](https://github.com/paycrest/wdk-protocol-fiat-paycrest) | Paycrest | Paycrest Sender API integration for stablecoin off-ramp to NGN, KES, UGX, and TZS, and on-ramp from NGN and KES | [Docs](/sdk/fiat-modules/fiat-paycrest/) |
  
  ## Community Modules
  
-@@ -66017,5 +66018,6 @@ Tether and the WDK Team do not endorse or assume responsibility for their code,
+@@ -64042,5 +64043,6 @@ Tether and the WDK Team do not endorse or assume responsibility for their code,
  | [`@swapdk/wdk-protocol-swidge-swapdk`](https://www.npmjs.com/package/@swapdk/wdk-protocol-swidge-swapdk) | Swidge | Routes through SwapDK | [README](https://github.com/Swap-DK/wdk-protocol-bridges-swapdk#readme) |
  | [`@gobob/wdk-protocol-swidge-gateway`](https://www.npmjs.com/package/@gobob/wdk-protocol-swidge-gateway) | Swidge | Routes through the BOB Gateway | [README](https://github.com/bob-collective/wdk-protocol-swidge-gateway#readme) |
  | [`@transak/wdk-protocol-fiat-transak`](https://github.com/Transak/wdk-protocol-fiat-transak) | Fiat | Transak integration for fiat on-ramp and off-ramp | [Docs](/sdk/fiat-modules/fiat-transak/) |
@@ -986,10 +986,10 @@ index c26fa59..5b78aa5 100644
  
  ***
 diff --git a/public/llms.txt b/public/llms.txt
-index cb66133..91e474e 100644
+index 03a977f..546645e 100644
 --- a/public/llms.txt
 +++ b/public/llms.txt
-@@ -112,6 +112,13 @@
+@@ -107,6 +107,13 @@
  - [Get Started](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/guides/get-started.md)
  - [Manage Transactions](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/guides/manage-transactions.md)
  - [Fiat Transak Usage](https://docs.wdk.tether.io/sdk/fiat-modules/fiat-transak/usage.md)
@@ -1004,7 +1004,7 @@ index cb66133..91e474e 100644
  - [Lending Modules Overview](https://docs.wdk.tether.io/sdk/lending-modules.md)
  - [Lend with Aave](https://docs.wdk.tether.io/sdk/lending-modules/lending-aave-evm.md)
 diff --git a/src/lib/custom-tree.ts b/src/lib/custom-tree.ts
-index aecb45b..36c4810 100644
+index ef6a567..66a28b3 100644
 --- a/src/lib/custom-tree.ts
 +++ b/src/lib/custom-tree.ts
 @@ -477,6 +477,16 @@ export const customTree: Node[] = [

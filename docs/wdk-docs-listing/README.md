@@ -45,29 +45,29 @@ Notes:
 
 Against a local clone of `tetherto/wdk-docs` `main`:
 
-- `node scripts/check-token-symbols.mjs`: passes (463 source files).
+- `node scripts/check-token-symbols.mjs`: passes (455 source files on current `develop`).
 - `node scripts/check-meta.mjs`: passes.
-- `node scripts/sync-all-modules-feed.mjs --check`: current.
-- `node scripts/check-links.mjs`: all internal links and anchors resolve. The only new failures are the GitHub repository (private) and npm package (unpublished) links.
-- `git apply --check` of the patch on fresh clones of `main` and `develop`: applies cleanly to both. Open the PR against `develop`, as #209 was.
+- `node scripts/sync-all-modules-feed.mjs --check`: current. The Fiat Modules feed row says off-ramp to NGN, KES, UGX, and TZS, and on-ramp from NGN and KES.
+- `node scripts/check-links.mjs`: internal links and anchors resolve (0 broken). The only broken links introduced are three copies of the still-private GitHub repository URL. The npm package link is an unpublished-package warning.
+- `git apply --check` of the patch on a fresh clone of `develop`: applies cleanly. Open the PR against `develop`, as #209 was.
 - `npm run build` was not run: installing wdk-docs dependencies requires access to a private `@tetherto` GitHub package.
 
 ## Proposed PR
 
-**Title**
+### Title
 
 ```
 Add: Paycrest Fiat Module Docs
 ```
 
-**Description** (confirm the Checks line after running `npm run quality` in the fork)
+### Description
 
 ```markdown
 ## Add Paycrest fiat on-ramp/off-ramp docs
 
 Adds documentation for the community module `@paycrest/wdk-protocol-fiat-paycrest`, covering setup, usage, and API reference, and registers it in the docs navigation using the same structure as the MoonPay and Transak modules.
 
-Paycrest is a neutral, non-custodial stablecoin-fiat routing protocol. The module implements `FiatProtocol` on the Paycrest Sender API for USD₮ on-ramp and off-ramp in Nigeria (NGN), Kenya (KES), Uganda (UGX), and Tanzania (TZS), over bank transfer and mobile money.
+Paycrest is a neutral, non-custodial stablecoin-fiat routing protocol. Liquidity providers compete to fill orders, and the stablecoin is locked in on-chain escrow until the provider confirms the fiat payout. The module implements `FiatProtocol` on the Paycrest Sender API for USD₮ off-ramp to NGN, KES, UGX, and TZS, and on-ramp from NGN and KES, over bank transfer and mobile money. Currency coverage depends on live provider liquidity.
 
 Unlike widget-based modules, Paycrest is API-based. Quotes and supported-asset lists come from Paycrest's public endpoints, so the module holds no credentials and can run in the wallet app. `buy()` and `sell()` hand the order to a `checkoutUrl` callback on the integrator's backend, which creates the order with the Sender API key and returns a checkout URL. `getTransactionDetail()` reads orders through a `getOrder` callback. The package ships an optional server helper for these routes and for webhook verification.
 

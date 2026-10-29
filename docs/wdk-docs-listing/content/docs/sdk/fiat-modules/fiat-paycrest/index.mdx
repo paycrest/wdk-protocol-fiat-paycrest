@@ -11,7 +11,7 @@ Community modules are developed and maintained independently by third-party cont
 Tether and the WDK Team do not endorse or assume responsibility for their code, security, or maintenance. Use your own judgment and proceed at your own risk.
 </Callout>
 
-Use the Paycrest fiat module to let users buy and sell stablecoins with local fiat currencies inside your application. [Paycrest](https://www.paycrest.io/) is a neutral, non-custodial stablecoin-fiat routing protocol that connects on-chain stablecoins to bank accounts and mobile money wallets.
+Use the Paycrest fiat module to let users buy and sell stablecoins with local fiat currencies inside your application. [Paycrest](https://www.paycrest.io/) is a neutral, non-custodial stablecoin-fiat routing protocol that connects on-chain stablecoins to bank accounts and mobile money wallets. Liquidity providers compete to fill orders, and the stablecoin is locked in on-chain escrow until the provider confirms the fiat payout.
 
 The module is API-based rather than widget-based. Quotes and supported-asset lists come from Paycrest's public endpoints, so the module can run inside your wallet app. Order creation and lookup go through `checkoutUrl` and `getOrder` callbacks that reach your backend, which holds your Paycrest API key and webhook secret.
 
@@ -27,32 +27,32 @@ This package is in beta. Paycrest runs on mainnet only, so test with small amoun
 
 ## Features
 
-- **Fiat On-Ramp**: Create orders where users pay fiat into a virtual account and receive stablecoins
-- **Fiat Off-Ramp**: Create orders where users send stablecoins and a bank or mobile money account receives fiat
-- **Price Quotes**: Get live buy and sell quotes from Paycrest's public rates, no API key required
-- **Transaction Tracking**: Retrieve order status and details by order id
-- **Currency Support**: Query supported stablecoins, networks, fiat currencies, and countries from the API
-- **Backend Helper**: Optional server helper for order creation, order lookup, webhook verification, and a funding instructions page
+- **Fiat on-ramp**: Create orders where users pay fiat into a virtual account and receive stablecoins
+- **Fiat off-ramp**: Create orders where users send stablecoins and a bank or mobile money account receives fiat
+- **Price quotes**: Get live buy and sell quotes from Paycrest's public rates, no API key required
+- **Transaction tracking**: Retrieve order status and details by order id
+- **Currency support**: Query supported stablecoins, networks, fiat currencies, and countries from the API
+- **Backend helper**: Optional server helper for order creation, order lookup, webhook verification, and a funding instructions page
 
-## Supported Corridors
+## Supported corridors
 
 | Fiat | Country | Stablecoin | On-ramp | Off-ramp | Channels |
 |------|---------|------------|---------|----------|----------|
 | NGN | Nigeria | USD₮ | Yes | Yes | Bank, mobile |
 | KES | Kenya | USD₮ | Yes | Yes | Bank, M-Pesa |
-| UGX | Uganda | USD₮ | Yes | Yes | Bank, mobile money |
-| TZS | Tanzania | USD₮ | Yes | Yes | Bank, mobile money |
+| UGX | Uganda | USD₮ | No | Yes | Bank, mobile money |
+| TZS | Tanzania | USD₮ | No | Yes | Bank, mobile money |
 
 {/* token-check-allow: USDC */}
 The same corridors also support USDC.
 
 Availability for a given stablecoin, network, direction, and amount depends on live provider coverage. Use [`getSupportedCryptoAssets()`](/sdk/fiat-modules/fiat-paycrest/api-reference) for the exact codes and networks, and a quote to confirm a corridor before creating an order.
 
-## Supported Networks
+## Supported networks
 
 USD₮ is available on Ethereum, Base, Arbitrum One, Polygon, BNB Smart Chain, Celo, Starknet, Tron, and Solana. Pass the network with `config.network` or set a default `network` in the module configuration.
 
-## Next Steps
+## Next steps
 
 <Cards>
 <Card title="Configuration" href="/sdk/fiat-modules/fiat-paycrest/configuration">
@@ -68,7 +68,7 @@ Complete API documentation for the module
 
 ---
 
-### Paycrest Resources
+### Paycrest resources
 
 - [Paycrest Dashboard](https://app.paycrest.io/) - Create your sender account and manage API keys
 - [Paycrest Documentation](https://docs.paycrest.io/) - Official Paycrest protocol and API documentation
@@ -76,6 +76,6 @@ Complete API documentation for the module
 
 ---
 
-### Need Help?
+### Need help?
 
 <SupportCards />
