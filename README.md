@@ -98,6 +98,7 @@ const paycrest = createPaycrestHandler({
   publicBaseUrl: 'https://your-backend.example.com/paycrest',
   authorize: async (req, { action, orderId }) => {
     // Your session or token check. Return true to allow.
+    return isAllowed(req, action, orderId)
   },
   onOrderCreated: async (order, req) => {
     // Store order.id against the authenticated user.
@@ -132,7 +133,7 @@ A complete runnable example is in [`examples/server.js`](examples/server.js).
 ### Security checklist
 
 - Keep `PAYCREST_API_KEY` and `PAYCREST_API_SECRET` in your backend environment only. See [`.env.example`](.env.example).
-- Implement `authorize`. Without it every route is open. At minimum, check that `GET /orders/:id` is for an order the authenticated user created.
+- `POST /orders` and `GET /orders/:id` respond 403 unless `authorize` returns true, or you set `allowUnauthenticated: true`. `GET /checkout/:id` stays open. In `authorize`, check that a lookup is for an order the authenticated user created.
 - Fee and routing policy is yours. The helper drops any `senderFee`, `senderFeePercent`, `senderFeeAddress` or `transactionFeePayer` sent by the client; set them through `orderDefaults` if you charge a sender fee.
 - Rate-limit `POST /orders` and restrict it to your app's origins.
 - The built-in checkout page shows only funding instructions and status. It never renders the recipient's bank details or KYC data.
@@ -147,10 +148,12 @@ import { PaycrestSenderClient, buildOrderPayload, verifyWebhookSignature } from 
 const client = new PaycrestSenderClient({ apiKey: process.env.PAYCREST_API_KEY })
 
 // POST /orders
+if (!(await isAllowedToCreateOrder(req))) return res.status(403).end()
 const order = await client.createOrder(buildOrderPayload(req.body))
 res.json({ url: `https://your-app.example.com/pay/${order.id}`, orderId: order.id, order })
 
 // GET /orders/:id
+if (!(await isOrderOwner(req, req.params.id))) return res.status(403).end()
 res.json(await client.getOrder(req.params.id))
 
 // POST /webhooks (raw body)
@@ -158,6 +161,8 @@ if (!verifyWebhookSignature(rawBody, req.headers['x-paycrest-signature'], proces
   return res.status(401).end()
 }
 ```
+
+Authorize every route against your own user and order records, rate-limit `POST /orders`, and restrict it to your own origins.
 
 ## Configuration
 
@@ -347,7 +352,7 @@ Import from `@paycrest/wdk-protocol-fiat-paycrest/server`, in backend code only.
 
 | Export | Description |
 |--------|-------------|
-| `createPaycrestHandler(options)` | `(req, res, next?)` handler for `node:http` and Express-style routers. Options: `apiKey`, `apiSecret`, `publicBaseUrl` or `checkoutUrl`, `authorize`, `orderDefaults`, `onOrderCreated`, `onWebhook`, `checkoutPage`, `bodyLimit`, `baseUrl`, `fetch`, `client`. |
+| `createPaycrestHandler(options)` | `(req, res, next?)` handler for `node:http` and Express-style routers. Options: `apiKey`, `apiSecret`, `publicBaseUrl` or `checkoutUrl`, `authorize`, `allowUnauthenticated`, `orderDefaults`, `onOrderCreated`, `onWebhook`, `checkoutPage`, `bodyLimit`, `baseUrl`, `fetch`, `client`. |
 | `PaycrestSenderClient` | `createOrder(payload)`, `getOrder(id)`, `verifyAccount({ institution, accountIdentifier, metadata? })`. Sends your API key. |
 | `buildOrderPayload(request, defaults?)` | Validates a `{ direction, order }` request from the client and returns the order payload, with fee fields taken only from `defaults`. Throws `PaycrestRequestError`. |
 | `verifyWebhookSignature(rawBody, signature, secret)` | Timing-safe check of `X-Paycrest-Signature` (hex HMAC-SHA256 of the raw body). |

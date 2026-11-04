@@ -44,7 +44,8 @@ import { renderCheckoutPage } from './checkout-page.js'
  * @property {string} [publicBaseUrl] - Public URL where this handler is mounted. Checkout URLs default to `${publicBaseUrl}/checkout/{orderId}`.
  * @property {(order: PaycrestOrder, req: IncomingMessage) => string | Promise<string>} [checkoutUrl] - Builds the checkout URL for a created order, e.g. a page in your own app. Overrides `publicBaseUrl`.
  * @property {PaycrestOrderDefaults | ((request: PaycrestCheckoutRequest, req: IncomingMessage) => PaycrestOrderDefaults | Promise<PaycrestOrderDefaults>)} [orderDefaults] - Server-controlled order fields, such as your sender fee settings.
- * @property {(req: IncomingMessage, context: PaycrestAuthorizeContext) => boolean | Promise<boolean>} [authorize] - Authorizes each request. Return false to respond 403. Strongly recommended in production.
+ * @property {(req: IncomingMessage, context: PaycrestAuthorizeContext) => boolean | Promise<boolean>} [authorize] - Authorizes each request, including checkout. Return exactly true to allow; anything else responds 403. When omitted, `POST /orders` and `GET /orders/{id}` respond 403 unless `allowUnauthenticated` is true. `GET /checkout/{id}` stays open.
+ * @property {boolean} [allowUnauthenticated] - Opt out of the fail-closed default and allow `POST /orders` and `GET /orders/{id}` with no `authorize` callback. Defaults to false.
  * @property {(order: PaycrestOrder, req: IncomingMessage, request: PaycrestCheckoutRequest) => void | Promise<void>} [onOrderCreated] - Called after an order is created, e.g. to store it against your user.
  * @property {(event: PaycrestWebhookEvent, req: IncomingMessage) => void | Promise<void>} [onWebhook] - Called for every verified webhook event.
  * @property {boolean} [checkoutPage] - Serve the built-in instructions page at `GET /checkout/{orderId}` (default: true).
@@ -133,6 +134,7 @@ export function createPaycrestHandler (options = {}) {
     checkoutUrl,
     orderDefaults = {},
     authorize,
+    allowUnauthenticated = false,
     onOrderCreated,
     onWebhook,
     checkoutPage = true,
@@ -146,7 +148,10 @@ export function createPaycrestHandler (options = {}) {
   const buildCheckoutUrl = checkoutUrl ??
     ((order) => `${publicBaseUrl.replace(/\/+$/, '')}/checkout/${encodeURIComponent(order.id)}`)
 
-  const isAuthorized = async (req, context) => !authorize || (await authorize(req, context)) === true
+  const isAuthorized = async (req, context) => {
+    if (authorize) return (await authorize(req, context)) === true
+    return context.action === 'viewCheckout' || allowUnauthenticated === true
+  }
 
   const forbidden = (res) => send(res, 403, { error: 'Forbidden' })
 

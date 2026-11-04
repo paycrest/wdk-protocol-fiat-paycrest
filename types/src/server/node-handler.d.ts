@@ -67,9 +67,13 @@ export type PaycrestHandlerOptions = {
      */
     orderDefaults?: PaycrestOrderDefaults | ((request: PaycrestCheckoutRequest, req: IncomingMessage) => PaycrestOrderDefaults | Promise<PaycrestOrderDefaults>);
     /**
-     * - Authorizes each request. Return false to respond 403. Strongly recommended in production.
+     * - Authorizes each request, including checkout. Return exactly true to allow; anything else responds 403. When omitted, `POST /orders` and `GET /orders/{id}` respond 403 unless `allowUnauthenticated` is true. `GET /checkout/{id}` stays open.
      */
     authorize?: (req: IncomingMessage, context: PaycrestAuthorizeContext) => boolean | Promise<boolean>;
+    /**
+     * - Opt out of the fail-closed default and allow `POST /orders` and `GET /orders/{id}` with no `authorize` callback. Defaults to false.
+     */
+    allowUnauthenticated?: boolean;
     /**
      * - Called after an order is created, e.g. to store it against your user.
      */

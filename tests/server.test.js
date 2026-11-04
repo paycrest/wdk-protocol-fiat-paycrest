@@ -239,7 +239,7 @@ describe('createPaycrestHandler', () => {
       return jsonResponse({ status: 'error', message: 'Order not found', data: null }, { status: 404, statusText: 'Not Found' })
     })
 
-    options = { apiKey: API_KEY, apiSecret: API_SECRET, fetch: paycrestFetch, publicBaseUrl: 'https://backend.example.com/paycrest/' }
+    options = { apiKey: API_KEY, apiSecret: API_SECRET, fetch: paycrestFetch, publicBaseUrl: 'https://backend.example.com/paycrest/', allowUnauthenticated: true }
   })
 
   afterEach(async () => {
@@ -311,17 +311,51 @@ describe('createPaycrestHandler', () => {
     expect((await fetch(`${baseUrl}/checkout/${ORDER_ID}`)).status).toBe(404)
   })
 
-  test('should respond 403 when authorize returns false', async () => {
-    const authorize = jest.fn().mockResolvedValue(false)
+  test('should refuse order routes when authorize is not configured', async () => {
+    const closed = { ...options }
+    delete closed.allowUnauthenticated
+    await listen(closed)
+
+    const create = await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(offrampRequest()) })
+    const read = await fetch(`${baseUrl}/orders/${ORDER_ID}`)
+    const checkout = await fetch(`${baseUrl}/checkout/${ORDER_ID}`)
+
+    expect(create.status).toBe(403)
+    expect(read.status).toBe(403)
+    expect(checkout.status).toBe(200)
+    expect(paycrestFetch).toHaveBeenCalledTimes(1)
+    expect(paycrestFetch.mock.calls[0][0]).toContain(`/v2/sender/orders/${ORDER_ID}`)
+  })
+
+  test('should allow order routes when allowUnauthenticated is set', async () => {
+    await listen(options)
+
+    expect((await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(offrampRequest()) })).status).toBe(201)
+    expect((await fetch(`${baseUrl}/orders/${ORDER_ID}`)).status).toBe(200)
+  })
+
+  test('should respond 403 when authorize returns false and allow a true decision', async () => {
+    const authorize = jest.fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(false)
+      .mockResolvedValue(true)
     await listen({ ...options, authorize })
 
     const create = await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(offrampRequest()) })
     const read = await fetch(`${baseUrl}/orders/${ORDER_ID}`)
+    const checkout = await fetch(`${baseUrl}/checkout/${ORDER_ID}`)
 
     expect(create.status).toBe(403)
     expect(read.status).toBe(403)
+    expect(checkout.status).toBe(403)
     expect(paycrestFetch).not.toHaveBeenCalled()
-    expect(authorize.mock.calls.map(([, context]) => context.action)).toEqual(['createOrder', 'getOrder'])
+
+    expect((await fetch(`${baseUrl}/orders`, { method: 'POST', body: JSON.stringify(offrampRequest()) })).status).toBe(201)
+    expect((await fetch(`${baseUrl}/orders/${ORDER_ID}`)).status).toBe(200)
+    expect(authorize.mock.calls.map(([, context]) => context.action)).toEqual([
+      'createOrder', 'getOrder', 'viewCheckout', 'createOrder', 'getOrder'
+    ])
   })
 
   test('should map request and Paycrest errors to HTTP statuses', async () => {
@@ -441,7 +475,7 @@ describe('end to end: client protocol against the server helper', () => {
       return jsonResponse(success(offrampOrder('validated')))
     })
 
-    const handler = createPaycrestHandler({ apiKey: API_KEY, fetch: paycrestFetch, publicBaseUrl: 'https://backend.example.com/paycrest' })
+    const handler = createPaycrestHandler({ apiKey: API_KEY, fetch: paycrestFetch, publicBaseUrl: 'https://backend.example.com/paycrest', allowUnauthenticated: true })
     server = createServer((req, res) => handler(req, res))
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
     baseUrl = `http://127.0.0.1:${server.address().port}`
